@@ -6,6 +6,7 @@
 <title>Design Project Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -29,9 +30,12 @@ header{background:var(--g-dark);color:#F5EDD8;padding:14px 24px;display:flex;ali
 .l-item{display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(245,237,216,.5);text-transform:uppercase;letter-spacing:.08em;}
 .l-dot{width:9px;height:9px;border-radius:2px;}
 .l-dot.past{background:#A3C9B0;}.l-dot.future{background:#E8D5A0;}.l-dot.empty{background:rgba(255,255,255,.15);}
-#ts{font-size:11px;color:rgba(245,237,216,.38);font-weight:300;white-space:nowrap;}
 .ts-badge{display:flex;align-items:center;gap:7px;background:rgba(184,150,46,.12);border:1px solid rgba(184,150,46,.35);color:var(--gold-l);padding:6px 13px;border-radius:4px;font-size:11px;white-space:nowrap;}
 .ts-badge svg{width:12px;height:12px;opacity:.7;flex-shrink:0;}
+.refresh-btn{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:4px;border:1px solid rgba(245,237,216,.2);background:rgba(245,237,216,.08);color:rgba(245,237,216,.7);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.refresh-btn:hover{background:rgba(245,237,216,.15);color:#F5EDD8;}
+.refresh-btn:disabled{opacity:.5;cursor:wait;}
+.refresh-btn.spin svg{animation:spin .7s linear infinite;}
 #stats-bar{background:var(--g-dark);border-top:1px solid rgba(255,255,255,.06);padding:10px 24px;display:flex;align-items:center;gap:28px;flex-shrink:0;}
 .stat{display:flex;flex-direction:column;gap:1px;}
 .stat-val{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--gold-l);line-height:1;}
@@ -55,17 +59,19 @@ thead{position:sticky;top:0;z-index:10;}
 thead th{background:var(--g-dark);padding:0;border-right:1px solid rgba(255,255,255,.07);}
 thead th .th-inner{padding:10px 8px 9px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:rgba(245,237,216,.6);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
 thead th:first-child{position:sticky;left:0;z-index:11;border-right:2px solid rgba(255,255,255,.12);}
-thead th:first-child .th-inner{text-align:left;padding-left:24px;min-width:190px;max-width:190px;}
+thead th:first-child .th-inner{text-align:left;padding-left:24px;min-width:220px;max-width:220px;}
 tbody tr{border-bottom:1px solid var(--border);}
 tbody tr:hover td{background:var(--warm) !important;}
 tbody tr:nth-child(even) td{background:rgba(240,234,224,.45);}
 tbody tr:nth-child(even):hover td{background:var(--warm) !important;}
 tbody td{background:var(--cream);}
-td.pname{position:sticky;left:0;z-index:5;padding:10px 14px 10px 24px;min-width:190px;max-width:190px;border-right:2px solid var(--border);}
+td.pname{position:sticky;left:0;z-index:5;padding:10px 14px 10px 24px;min-width:220px;max-width:220px;border-right:2px solid var(--border);}
 .pn-text{font-size:13px;font-weight:500;color:var(--char);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ph-badge{display:inline-block;font-size:9px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;margin-top:3px;padding:2px 7px;border-radius:3px;}
-.ba{background:#E8F2EC;color:var(--g-mid);}.bl{background:#FEE2E2;color:var(--red);}
-.bc{background:#EDE9FE;color:var(--purple);}.bd{background:#FEF3C7;color:#92400E;}.bn{background:#F3F4F6;color:#4B5563;}
+.src-badges{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
+.src-badge{font-size:8px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;padding:1px 5px;border-radius:2px;}
+.src-badge.calendar{background:#E8F2EC;color:var(--g-mid);}
+.src-badge.teamup{background:#EDE9FE;color:var(--purple);}
+.src-badge.asana{background:#FEF3C7;color:#92400E;}
 td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid var(--border);vertical-align:middle;}
 .chip{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .chip.past{background:#E8F2EC;color:var(--g-mid);border:1px solid #C2DEC9;}
@@ -73,6 +79,7 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 .chip.today{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;}
 .dash{width:18px;height:2px;background:var(--border);margin:0 auto;border-radius:2px;}
 .empty{padding:60px 24px;text-align:center;color:var(--gray);font-size:13px;font-style:italic;}
+.err-msg{padding:40px 24px;text-align:center;color:var(--red);font-size:13px;}
 #panel-timing{flex:1;overflow:auto;padding:28px 32px;display:none;}
 #panel-timing.show{display:block;}
 .timing-header{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--g-dark);margin-bottom:6px;}
@@ -135,10 +142,10 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 </head>
 <body>
 <div id="app">
-  <div id="overlay" class="hidden">
+  <div id="overlay">
     <div class="spinner"></div>
     <div class="ov-title">Loading projects…</div>
-    <div class="ov-sub">Fetching from Asana</div>
+    <div class="ov-sub">Fetching live data from Supabase</div>
   </div>
   <header>
     <div><div class="h-title">Design Project Tracker</div><div class="h-sub">Portfolio Report &nbsp;·&nbsp; Elite Kitchen &amp; Bath</div></div>
@@ -150,8 +157,14 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
     </div>
     <div class="ts-badge">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><polyline points="8,4.5 8,8 10.5,10"/></svg>
-      <span id="ts">Data as of May 16, 2026</span>
+      <span id="ts">Loading…</span>
     </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadData()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M13.5 2.5A7 7 0 1 1 2 8.5"/><path d="M13.5 2.5V6.5H9.5"/>
+      </svg>
+      Refresh
+    </button>
   </header>
   <div id="stats-bar"></div>
   <div id="tabs">
@@ -172,103 +185,269 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
   </div>
 </div>
 <script>
-const ALWAYS_SHOW = new Set(["# 10 REVISIONS", "# 5 IDEAS", "#10 DESIGN DEV", "#11 CABINETRY", "#12 MATERIAL", "#13 BLUE TAPE", "#16 PRESENTATION", "#17 PRECLOSING", "#5 ON-SITE", "#6 ONSITE_", "#7 APPLIANCE", "#9 CONCEPT CLIENT"]);
-const TABLE_HIDE  = new Set(["#5 on-site"]);
-const SEED_DATA   = {"projects": [{"name": "382 Arboleda Road - CO - Kitchen", "gid": "1213500034151285", "phase": "LOST", "dates": {"#1 HA": "2026-03-14", "#4 BUDGET": "2026-04-11", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-04-17", "#2 FIT": "2026-04-09", "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "5220 Coruna Court - Kitchen", "gid": "1213701099288593", "phase": "BUDGETING", "dates": {"#1 HA": "2026-04-04", "#4 BUDGET": "2026-04-20", "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "Material Ordered": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "pre-closing": null, "#2 FIT": "2026-04-07", "#3 PRE-BUDGET": "2026-04-13", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "#6 ONSITE_": null, "#8 CONCEPT C_": null, "#10 PRESENTATION_": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-03-17", "# 5 IDEAS": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "1723 Robbins - Kitchen + Bath", "gid": "1214210245720333", "phase": null, "dates": {"#1 HA": "2026-04-27", "#4 BUDGET": "2026-05-07", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": "2026-05-04", "#3 PRE-BUDGET": "2026-05-04", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "4910 Sawyer Ave - BATH", "gid": "1213044937334380", "phase": "BUDGETING", "dates": {"#1 HA": "2026-02-03", "#4 BUDGET": "2026-02-21", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-01-31", "#2 FIT": "2026-02-03", "#3 PRE-BUDGET": "2026-02-16", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "441 Loma Alta - BATHROOM", "gid": "1213087587573043", "phase": "BUDGETING", "dates": {"#1 HA": "2026-02-13", "#4 BUDGET": "2026-02-27", "CLOSING": null, "Date....": null, "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "MAT. ORDERED": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "#2 FIT": "2026-02-24", "#3 PRE-BUDGET": "2026-02-26", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "FINISH DATE": null, "Material Ordered": null, "IN PHASE SINCE": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "103 San Federico Ave - Kitchen", "gid": "1213397425366849", "phase": "DESIGN", "dates": {"#1 HA": "2026-03-02", "#4 BUDGET": "2026-03-24", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-03-25", "#2 FIT": "2026-03-03", "#3 PRE-BUDGET": "2026-03-18", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "pre-closing": null, "#6 ONSITE_": "2026-04-03", "#8 CONCEPT C_": null, "#10 PRESENTATION_": null, "DATE REQUESTED": null, "DATE ORDERED": null, "# 5 IDEAS": "2026-04-07", "#7 APPLIANCE": "2026-04-15", "#8 CONCEPT": "2026-04-22", "#9 CONCEPT CLIENT": "2026-05-04", "#10 DESIGN DEV": "2026-05-15", "#11 CABINETRY": null, "#12 MATERIAL": "2026-05-18", "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "# 10 REVISIONS": "2026-05-06"}}, {"name": "471 San Marino Dr - Kitchen", "gid": "1213003174721519", "phase": "DESIGN", "dates": {"#1 HA": "2026-02-02", "#4 BUDGET": "2026-02-12", "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": "2026-02-03", "#3 PRE-BUDGET": "2026-02-09", "#5 ON-SITE": "4910-02-17", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-02-17", "ETA": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-04-10", "#13 BLUE TAPE": "2026-05-22", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "6506 Camino Venturoso - Kitchen", "gid": "1212053218937355", "phase": "DESIGN", "dates": {"#1 HA": "2025-11-24", "#4 BUDGET": "2025-12-20", "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": null, "#3 PRE-BUDGET": "2025-12-16", "#5 ON-SITE": "2026-02-02", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "date...": null, "DATE": null, "IN PHASE SINCE": "2026-02-04", "DATE REQUESTED": null, "DATE ORDERED": null, "# 5 IDEAS": "2026-02-17", "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": "2026-04-07", "#12 MATERIAL": "2026-05-18", "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "755 Cathedral Point Ln. KITCHEN", "gid": "1212009200781949", "phase": "DESIGN", "dates": {"#1 HA": "2025-11-20", "#4 BUDGET": "2025-12-16", "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": "2026-04-16", "Material Ordered": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "pre-closing": null, "#2 FIT": null, "#3 PRE-BUDGET": "2025-12-10", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "FINISH DATE": null, "IN PHASE SINCE": null, "# 5 IDEAS": null, "#6 ONSITE_": "2026-01-20", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": "2026-04-10", "DATE REQUESTED": null, "DATE ORDERED": null}}, {"name": "5551 Calle Arena (Carp) - KITCHEN", "gid": "1211039612000862", "phase": "PRE PRODUCTION", "dates": {"#1 HA": "2025-08-26", "#4 BUDGET": "2025-09-24", "CAB. SIGN OFF": null, "CLOSING": "2026-04-17", "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "Date....": null, "MAT. ORDERED": null, "#2 FIT": null, "#3 PRE-BUDGET": null, "#5 ON-SITE": "2026-01-15", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "IN PHASE SINCE": "2026-04-22", "ETA": null, "# 5 IDEAS": "2026-01-15", "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": "2026-03-10", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": "2026-04-14", "DATE REQUESTED": null, "DATE ORDERED": null, "Prestart Date": "2026-06-29"}}, {"name": "483 Reed Ct - Bath", "gid": "1211974902932829", "phase": "PRODUCTION", "dates": {"#1 HA": "2025-11-18", "#4 BUDGET": "2025-12-22", "CLOSING": "2026-03-12", "CAB. SIGN OFF": null, "Onsite Visit": null, "Formal Start": "2026-05-07", "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-05-05", "#2 FIT": null, "#3 PRE-BUDGET": "2025-12-10", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "DATE REQUESTED": null, "DATE ORDERED": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "ETA": null, "ETA *": null, "PREL. DATE": null, "Prestart Date": "2026-05-07"}}, {"name": "6525 Camino Caseta -  KITCHEN", "gid": "1211974902932842", "phase": "PRODUCTION", "dates": {"#1 HA": "2025-11-20", "#4 BUDGET": "2025-12-09", "CLOSING": null, "CAB. SIGN OFF": null, "Onsite Visit": null, "Formal Start": "2026-04-27", "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-04-24", "#2 FIT": null, "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "DATE REQUESTED": null, "DATE ORDERED": null, "ETA": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-04-23", "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "Date....": null, "MAT. ORDERED": null, "ETA *": null, "PREL. DATE": null, "Prestart Date": "2026-04-27"}}, {"name": "452 Cool Brook Ln - Kitchen", "gid": "1213003174721514", "phase": "DESIGN", "dates": {"Date....": null, "#1 HA": "2026-02-02", "#4 BUDGET": "2026-02-09", "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": "2026-05-19", "MAT. ORDERED": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "#2 FIT": "2026-02-04", "#3 PRE-BUDGET": "2026-02-06", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "FINISH DATE": null, "Material Ordered": null, "IN PHASE SINCE": "2026-02-18", "DATE REQUESTED": null, "DATE ORDERED": null, "# 5 IDEAS": null, "#6 ONSITE_": "2026-02-12", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": "2026-04-30", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": "2026-05-11", "#17 PRECLOSING": "2026-05-13", "Prestart Date": "2026-06-01"}}, {"name": "452 Cool Brook Ln - Bath", "gid": "1213461342961402", "phase": "DESIGN", "dates": {"Date....": null, "#1 HA": "2026-02-02", "#4 BUDGET": "2026-02-09", "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": "2026-05-19", "MAT. ORDERED": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "#2 FIT": "2026-02-04", "#3 PRE-BUDGET": "2026-02-06", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "FINISH DATE": null, "Material Ordered": null, "IN PHASE SINCE": "2026-02-27", "# 5 IDEAS": null, "#6 ONSITE_": "2026-02-12", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-04-13", "#13 BLUE TAPE": "2026-04-30", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": "2026-05-11", "#17 PRECLOSING": "2026-05-13"}}, {"name": "1520 Shoreline Dr - Family room & Kitchen", "gid": "1213857986698998", "phase": "BUDGETING", "dates": {"#1 HA": "2026-04-08", "#4 BUDGET": "2026-04-16", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-03-31", "#2 FIT": null, "#3 PRE-BUDGET": "2026-04-13", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "811 Camino Viejo - 7x BATH", "gid": "1212698443556029", "phase": "BUDGETING", "dates": {"#1 HA": "2026-01-15", "#4 BUDGET": "2026-01-29", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-01-15", "#2 FIT": "2026-01-16", "#3 PRE-BUDGET": "2026-01-22", "#5 ON-SITE": "2026-02-05", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": "2026-02-05", "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "2610 Calzada Ave - 2 Bath", "gid": "1214210105828776", "phase": null, "dates": {"#1 HA": "2026-04-28", "#4 BUDGET": "2026-05-04", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": "2026-05-01", "#3 PRE-BUDGET": "2026-05-01", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "1407 Gillespie St - BATH", "gid": "1213044937334386", "phase": "DESIGN", "dates": {"#1 HA": "2026-02-05", "#4 BUDGET": "2026-02-17", "CLOSING": null, "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "Material Ordered": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "pre-closing": null, "#2 FIT": null, "#3 PRE-BUDGET": "2026-02-12", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-03-03", "DATE REQUESTED": null, "DATE ORDERED": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "5634 Cielo Ave - Kitchen", "gid": "1213386721808937", "phase": "BUDGETING", "dates": {"#1 HA": "2026-03-07", "#4 BUDGET": "2026-03-20", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-02-24", "#2 FIT": "2026-03-09", "#3 PRE-BUDGET": "2026-03-17", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "pre-closing": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "5304 Paseo Rio - Kitchen & Bath", "gid": "1213397425366869", "phase": "BUDGETING", "dates": {"#1 HA": "2026-02-26", "#4 BUDGET": null, "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-02-23", "#2 FIT": null, "#3 PRE-BUDGET": "2026-03-17", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "pre-closing": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "5257 Calle Barquero - Bath", "gid": "1214152961191160", "phase": "DESIGN", "dates": {"#1 HA": "2026-04-25", "#4 BUDGET": "2026-05-02", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-05-11", "#2 FIT": "2026-04-27", "#3 PRE-BUDGET": "2026-04-29", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": "2026-05-12", "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "DATE REQUESTED": null, "DATE ORDERED": null}}, {"name": "5527 Calle Arena - Kitchen", "gid": "1213500034151267", "phase": "BUDGETING", "dates": {"#1 HA": "2026-03-10", "#4 BUDGET": "2026-04-07", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-03-02", "#2 FIT": "2026-03-11", "#3 PRE-BUDGET": "2026-03-14", "#5 ON-SITE": "2026-03-25", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "pre-closing": null, "#6 ONSITE_": null, "#8 CONCEPT C_": null, "#10 PRESENTATION_": null, "# 5 IDEAS": "2026-03-25", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "3877 Cinco Amigos - Closet", "gid": "1213903148215819", "phase": "BUDGETING", "dates": {"#1 HA": "2026-03-21", "#4 BUDGET": null, "CLOSING": null, "FINISH PROMISE DATE*": null, "#2 FIT": "2026-04-03", "#3 PRE-BUDGET": null, "# 5 IDEAS": "2026-04-28", "#6 ONSITE_": "2026-04-09", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "Material Ordered": null, "CAB. ETA": null, "Formal Start": null, "pre-closing": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "#8 CONCEPT C_": null, "#10 PRESENTATION_": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-04-02"}}, {"name": "988 Barcelona Dr - BATH", "gid": "1212985278135358", "phase": "DESIGN", "dates": {"#1 HA": "2026-01-22", "#4 BUDGET": "2026-01-31", "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": "2026-01-23", "#3 PRE-BUDGET": "2026-01-30", "#5 ON-SITE": "2026-03-20", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-01-28", "DATE REQUESTED": null, "DATE ORDERED": null, "# 5 IDEAS": "2026-03-20", "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-04-10", "#13 BLUE TAPE": "2026-05-13", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": "2026-05-19", "#17 PRECLOSING": null}}, {"name": "6506 Camino Venturoso Master Bathroom", "gid": "1213420268401177", "phase": "DESIGN", "dates": {"#1 HA": "2025-11-24", "#4 BUDGET": "2025-12-20", "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": null, "#3 PRE-BUDGET": "2025-12-16", "#5 ON-SITE": "2026-02-02", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-02-26", "# 5 IDEAS": "2026-02-02", "#6 ONSITE_": "2026-02-20", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": "2026-04-29", "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-05-12", "#13 BLUE TAPE": "2026-05-19", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "471 San Marino - Master Bathroom", "gid": "1213461342961397", "phase": "DESIGN", "dates": {"#1 HA": null, "#4 BUDGET": "2026-03-12", "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": null, "#3 PRE-BUDGET": "2026-02-09", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-03-02", "# 5 IDEAS": "2026-05-17", "#6 ONSITE_": "2026-04-21", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": "2026-05-08", "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": "2026-05-22", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "471 San Marino - Guest Bathroom", "gid": "1213727342300587", "phase": "DESIGN", "dates": {"#1 HA": null, "#4 BUDGET": "2026-02-12", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-04-01", "#2 FIT": null, "#3 PRE-BUDGET": "2026-02-09", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "# 5 IDEAS": "2026-05-17", "#6 ONSITE_": "2026-04-21", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": "2026-05-08", "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": "2026-05-22", "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "704 San Roque Road - Kitchen", "gid": "1212722000286853", "phase": "DESIGN", "dates": {"#1 HA": "2026-01-13", "#4 BUDGET": "2026-02-27", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-03-16", "#2 FIT": null, "#3 PRE-BUDGET": "2026-01-20", "#5 ON-SITE": "2026-03-06", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "DATE REQUESTED": null, "DATE ORDERED": null, "# 5 IDEAS": "2026-03-06", "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": "2026-04-11", "#10 DESIGN DEV": "2026-05-22", "#11 CABINETRY": null, "#12 MATERIAL": "2026-05-22", "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "246 Spruce Drive - Master Bath", "gid": "1213258199892853", "phase": "DESIGN", "dates": {"#1 HA": "2026-02-17", "#4 BUDGET": "2026-03-03", "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "Material Ordered": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "pre-closing": null, "#2 FIT": "2026-02-18", "#3 PRE-BUDGET": "2026-02-27", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-04-09", "# 5 IDEAS": "2026-04-21", "#6 ONSITE_": "2026-04-22", "#7 APPLIANCE": null, "#8 CONCEPT": "2026-05-06", "#9 CONCEPT CLIENT": "2026-05-06", "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-05-19", "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "DATE REQUESTED": null, "DATE ORDERED": null}}, {"name": "4530 Via Clarice - Kitchen", "gid": "1211800192716490", "phase": "DESIGN", "dates": {"#1 HA": "2025-11-12", "#4 BUDGET": "2025-12-17", "CLOSING": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": null, "#3 PRE-BUDGET": "2025-12-11", "#5 ON-SITE": "2026-02-04", "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "date...": null, "DATE": null, "IN PHASE SINCE": null, "# 5 IDEAS": "2026-04-15", "#6 ONSITE_": "2026-04-20", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-05-22", "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "4530 Via Clarice - Master Bath", "gid": "1213459219592853", "phase": "DESIGN", "dates": {"#1 HA": "2025-11-12", "#4 BUDGET": "2025-12-17", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": "2026-03-02", "#2 FIT": null, "#3 PRE-BUDGET": "2025-12-11", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "# 5 IDEAS": "2026-04-15", "#6 ONSITE_": "2026-04-20", "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": "2026-05-22", "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "3200 Montecielo Dr MASTER BATH", "gid": "1213424978489827", "phase": "DESIGN", "dates": {"#1 HA": "2026-02-27", "#4 BUDGET": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": "2026-03-02", "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-03-09", "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": "2026-05-14", "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "3200 Montecielo GUEST BATH", "gid": "1213496879083578", "phase": "DESIGN", "dates": {"#1 HA": "2026-02-27", "#4 BUDGET": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": "2026-03-02", "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-03-09", "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": "2026-05-14", "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "191 East Mountain Dr - Kitchen", "gid": "1213459862656481", "phase": "BUDGETING", "dates": {"#1 HA": "2026-03-16", "#4 BUDGET": "2026-03-23", "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "Material Ordered": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "pre-closing": null, "#2 FIT": "2026-03-18", "#3 PRE-BUDGET": "2026-03-20", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "FINISH DATE": null, "IN PHASE SINCE": "2026-02-26", "#6 ONSITE_": null, "#8 CONCEPT C_": null, "#10 PRESENTATION_": null, "# 5 IDEAS": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "316 N. Voluntario St. - BATH", "gid": "1213814547868210", "phase": "BUDGETING", "dates": {"Date....": null, "#1 HA": "2026-03-26", "#4 BUDGET": "2026-04-21", "Onsite Visit": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "MAT. ORDERED": null, "CAB. ETA": null, "FINISH PROMISE DATE*": null, "Formal Start": null, "#2 FIT": "2026-03-27", "#3 PRE-BUDGET": "2026-03-30", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "4530 Via Clarice - Bar", "gid": "1213705865651742", "phase": "BUDGETING", "dates": {"#1 HA": null, "#4 BUDGET": null, "CAB. SIGN OFF": null, "CAB.  Ordered": null, "CLOSING": null, "CAB. ETA": null, "Material Ordered": null, "Onsite Visit": null, "FINISH PROMISE DATE*": null, "#2 FIT": null, "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null, "Formal Start": null, "FINISH DATE": null, "IN PHASE SINCE": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": "2026-05-14", "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "1682 Eucalyptus Drive - Kitchen", "gid": "1214132296915441", "phase": null, "dates": {"#1 HA": "2026-05-19", "#4 BUDGET": null, "CLOSING": null, "FINISH PROMISE DATE*": null, "#2 FIT": "2026-05-20", "#3 PRE-BUDGET": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "CAB. SIGN OFF": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "#10 INTERNAL": null}}, {"name": "407 W Sola St - Kitchen", "gid": "1214317142888483", "phase": null, "dates": {"#1 HA": "2026-05-01", "#4 BUDGET": "2026-05-15", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": null, "#3 PRE-BUDGET": "2026-05-11", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "1151 Deer Hill Dr - Kitchen", "gid": "1214152961191145", "phase": null, "dates": {"#1 HA": "2026-04-24", "#4 BUDGET": "2026-05-08", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": "2026-05-07", "#3 PRE-BUDGET": "2026-05-05", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "4648 Granada Pl - Home Remodel", "gid": "1214317142888466", "phase": null, "dates": {"#1 HA": "2026-05-13", "#4 BUDGET": "2026-05-20", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": null, "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "4592 Via Clarice - Bath", "gid": "1214508893610089", "phase": null, "dates": {"#1 HA": "2026-05-09", "#4 BUDGET": "2026-05-20", "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": "2026-05-11", "#3 PRE-BUDGET": "2026-05-14", "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "3080 Eucalyptus Hill - Bath", "gid": "1214555565099454", "phase": null, "dates": {"#1 HA": "2026-05-20", "#4 BUDGET": null, "CAB. SIGN OFF": null, "CLOSING": "2026-05-21", "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": "2026-05-21", "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "633 Ripley St - Bath", "gid": "1214713763583316", "phase": null, "dates": {"#1 HA": "2026-05-27", "#4 BUDGET": null, "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": null, "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}, {"name": "1215 Cima Linda Ln. - Kitchen & Bath", "gid": "1214713864406718", "phase": null, "dates": {"#1 HA": "2026-05-15", "#4 BUDGET": null, "CLOSING": null, "FINISH PROMISE DATE*": null, "#2 FIT": "2026-05-18", "#3 PRE-BUDGET": "2026-05-21", "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "CAB. SIGN OFF": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null}}, {"name": "1211 Lomita Ln - Bath", "gid": "1214713864406733", "phase": null, "dates": {"#1 HA": "2026-05-28", "#4 BUDGET": null, "CLOSING": null, "FINISH PROMISE DATE*": null, "#2 FIT": null, "#3 PRE-BUDGET": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null, "CAB. SIGN OFF": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null}}, {"name": "171 Santo Tomas Ln - Kitchen and Bath", "gid": "1214713864406748", "phase": null, "dates": {"#1 HA": "2026-05-26", "#4 BUDGET": null, "CAB. SIGN OFF": null, "CLOSING": null, "Onsite Visit": null, "Formal Start": null, "FINISH DATE": null, "FINISH PROMISE DATE*": null, "CAB.  Ordered": null, "CAB. ETA": null, "Material Ordered": null, "IN PHASE SINCE": null, "#2 FIT": null, "#3 PRE-BUDGET": null, "#5 ON-SITE": null, "#8 HANDOFF": null, "11 PRE-": null, "#12 FINAL": null, "# 5 IDEAS": null, "#6 ONSITE_": null, "#7 APPLIANCE": null, "#8 CONCEPT": null, "#9 CONCEPT CLIENT": null, "#10 DESIGN DEV": null, "#11 CABINETRY": null, "#12 MATERIAL": null, "#13 BLUE TAPE": null, "#14 DESIGN PACKAGE": null, "#15 HANDOFF": null, "#16 PRESENTATION": null, "#17 PRECLOSING": null}}], "timing": [{"from": "#1 HA", "to": "#2 FIT", "n": 25, "entries": [{"name": "103 San Federico Ave - Kitchen", "days": 1}, {"name": "471 San Marino Dr - Kitchen", "days": 1}, {"name": "811 Camino Viejo - 7x BATH", "days": 1}, {"name": "5527 Calle Arena - Kitchen", "days": 1}, {"name": "988 Barcelona Dr - BATH", "days": 1}, {"name": "246 Spruce Drive - Master Bath", "days": 1}, {"name": "316 N. Voluntario St. - BATH", "days": 1}, {"name": "1682 Eucalyptus Drive - Kitchen", "days": 1}, {"name": "3080 Eucalyptus Hill - Bath", "days": 1}, {"name": "452 Cool Brook Ln - Kitchen", "days": 2}, {"name": "452 Cool Brook Ln - Bath", "days": 2}, {"name": "5634 Cielo Ave - Kitchen", "days": 2}, {"name": "5257 Calle Barquero - Bath", "days": 2}, {"name": "191 East Mountain Dr - Kitchen", "days": 2}, {"name": "4592 Via Clarice - Bath", "days": 2}, {"name": "5220 Coruna Court - Kitchen", "days": 3}, {"name": "2610 Calzada Ave - 2 Bath", "days": 3}, {"name": "3200 Montecielo Dr MASTER BATH", "days": 3}, {"name": "3200 Montecielo GUEST BATH", "days": 3}, {"name": "1215 Cima Linda Ln. - Kitchen & Bath", "days": 3}, {"name": "1723 Robbins - Kitchen + Bath", "days": 7}, {"name": "441 Loma Alta - BATHROOM", "days": 11}, {"name": "3877 Cinco Amigos - Closet", "days": 13}, {"name": "1151 Deer Hill Dr - Kitchen", "days": 13}, {"name": "382 Arboleda Road - CO - Kitchen", "days": 26}], "avg": 4, "min": 1, "max": 26, "has_data": true}, {"from": "#2 FIT", "to": "#3 PRE-BUDGET", "n": 17, "entries": [{"name": "441 Loma Alta - BATHROOM", "days": 2}, {"name": "452 Cool Brook Ln - Kitchen", "days": 2}, {"name": "452 Cool Brook Ln - Bath", "days": 2}, {"name": "5257 Calle Barquero - Bath", "days": 2}, {"name": "191 East Mountain Dr - Kitchen", "days": 2}, {"name": "5527 Calle Arena - Kitchen", "days": 3}, {"name": "316 N. Voluntario St. - BATH", "days": 3}, {"name": "4592 Via Clarice - Bath", "days": 3}, {"name": "1215 Cima Linda Ln. - Kitchen & Bath", "days": 3}, {"name": "5220 Coruna Court - Kitchen", "days": 6}, {"name": "471 San Marino Dr - Kitchen", "days": 6}, {"name": "811 Camino Viejo - 7x BATH", "days": 6}, {"name": "988 Barcelona Dr - BATH", "days": 7}, {"name": "5634 Cielo Ave - Kitchen", "days": 8}, {"name": "246 Spruce Drive - Master Bath", "days": 9}, {"name": "4910 Sawyer Ave - BATH", "days": 13}, {"name": "103 San Federico Ave - Kitchen", "days": 15}], "avg": 5, "min": 2, "max": 15, "has_data": true}, {"from": "#3 PRE-BUDGET", "to": "#4 BUDGET", "n": 31, "entries": [{"name": "441 Loma Alta - BATHROOM", "days": 1}, {"name": "988 Barcelona Dr - BATH", "days": 1}, {"name": "1723 Robbins - Kitchen + Bath", "days": 3}, {"name": "471 San Marino Dr - Kitchen", "days": 3}, {"name": "452 Cool Brook Ln - Kitchen", "days": 3}, {"name": "452 Cool Brook Ln - Bath", "days": 3}, {"name": "1520 Shoreline Dr - Family room & Kitchen", "days": 3}, {"name": "2610 Calzada Ave - 2 Bath", "days": 3}, {"name": "5634 Cielo Ave - Kitchen", "days": 3}, {"name": "5257 Calle Barquero - Bath", "days": 3}, {"name": "471 San Marino - Guest Bathroom", "days": 3}, {"name": "191 East Mountain Dr - Kitchen", "days": 3}, {"name": "1151 Deer Hill Dr - Kitchen", "days": 3}, {"name": "6506 Camino Venturoso - Kitchen", "days": 4}, {"name": "6506 Camino Venturoso Master Bathroom", "days": 4}, {"name": "246 Spruce Drive - Master Bath", "days": 4}, {"name": "407 W Sola St - Kitchen", "days": 4}, {"name": "4910 Sawyer Ave - BATH", "days": 5}, {"name": "1407 Gillespie St - BATH", "days": 5}, {"name": "103 San Federico Ave - Kitchen", "days": 6}, {"name": "755 Cathedral Point Ln. KITCHEN", "days": 6}, {"name": "4530 Via Clarice - Kitchen", "days": 6}, {"name": "4530 Via Clarice - Master Bath", "days": 6}, {"name": "4592 Via Clarice - Bath", "days": 6}, {"name": "5220 Coruna Court - Kitchen", "days": 7}, {"name": "811 Camino Viejo - 7x BATH", "days": 7}, {"name": "483 Reed Ct - Bath", "days": 12}, {"name": "316 N. Voluntario St. - BATH", "days": 22}, {"name": "5527 Calle Arena - Kitchen", "days": 24}, {"name": "471 San Marino - Master Bathroom", "days": 31}, {"name": "704 San Roque Road - Kitchen", "days": 38}], "avg": 7, "min": 1, "max": 38, "has_data": true}, {"from": "#4 BUDGET", "to": "# 5 IDEAS", "n": 13, "entries": [{"name": "811 Camino Viejo - 7x BATH", "days": 7}, {"name": "704 San Roque Road - Kitchen", "days": 7}, {"name": "5257 Calle Barquero - Bath", "days": 10}, {"name": "103 San Federico Ave - Kitchen", "days": 14}, {"name": "6506 Camino Venturoso Master Bathroom", "days": 44}, {"name": "988 Barcelona Dr - BATH", "days": 48}, {"name": "246 Spruce Drive - Master Bath", "days": 49}, {"name": "6506 Camino Venturoso - Kitchen", "days": 59}, {"name": "471 San Marino - Master Bathroom", "days": 66}, {"name": "471 San Marino - Guest Bathroom", "days": 94}, {"name": "5551 Calle Arena (Carp) - KITCHEN", "days": 113}, {"name": "4530 Via Clarice - Kitchen", "days": 119}, {"name": "4530 Via Clarice - Master Bath", "days": 119}], "avg": 58, "min": 7, "max": 119, "has_data": true}, {"from": "# 5 IDEAS", "to": "#6 ONSITE_", "n": 4, "entries": [{"name": "246 Spruce Drive - Master Bath", "days": 1}, {"name": "4530 Via Clarice - Kitchen", "days": 5}, {"name": "4530 Via Clarice - Master Bath", "days": 5}, {"name": "6506 Camino Venturoso Master Bathroom", "days": 18}], "avg": 7, "min": 1, "max": 18, "has_data": true}, {"from": "#6 ONSITE_", "to": "#7 APPLIANCE", "n": 1, "entries": [{"name": "103 San Federico Ave - Kitchen", "days": 12}], "has_data": false, "need": 1}, {"from": "#7 APPLIANCE", "to": "#8 CONCEPT", "n": 1, "entries": [{"name": "103 San Federico Ave - Kitchen", "days": 7}], "has_data": false, "need": 1}, {"from": "#8 CONCEPT", "to": "#9 CONCEPT CLIENT", "n": 1, "entries": [{"name": "103 San Federico Ave - Kitchen", "days": 12}], "has_data": false, "need": 1}, {"from": "#9 CONCEPT CLIENT", "to": "# 10 REVISIONS", "n": 1, "entries": [{"name": "103 San Federico Ave - Kitchen", "days": 2}], "has_data": false, "need": 1}, {"from": "# 10 REVISIONS", "to": "#11 DESIGN DEV", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#11 DESIGN DEV", "to": "#12 CABINETRY", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#12 CABINETRY", "to": "#13 MATERIAL", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#13 MATERIAL", "to": "#14 REVISIONS", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#14 REVISIONS", "to": "#15 BLUE TAPE", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#15 BLUE TAPE", "to": "#16 DESIGN PACKAGE", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#16 DESIGN PACKAGE", "to": "#17 HANDOFF", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#17 HANDOFF", "to": "#18 PRESENTATION", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#18 PRESENTATION", "to": "#19 REVISIONS", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#19 REVISIONS", "to": "#20 PRECLOSING", "n": 0, "entries": [], "has_data": false, "need": 2}, {"from": "#20 PRECLOSING", "to": "CLOSING", "n": 0, "entries": [], "has_data": false, "need": 2}], "phases": [{"label": "Budget Phase", "color": "#2D5A41", "from": "#1 HA", "to": "#4 BUDGET", "n": 33, "entries": [{"name": "2610 Calzada Ave - 2 Bath", "days": 6}, {"name": "452 Cool Brook Ln - Kitchen", "days": 7}, {"name": "452 Cool Brook Ln - Bath", "days": 7}, {"name": "5257 Calle Barquero - Bath", "days": 7}, {"name": "191 East Mountain Dr - Kitchen", "days": 7}, {"name": "4648 Granada Pl - Home Remodel", "days": 7}, {"name": "1520 Shoreline Dr - Family room & Kitchen", "days": 8}, {"name": "988 Barcelona Dr - BATH", "days": 9}, {"name": "1723 Robbins - Kitchen + Bath", "days": 10}, {"name": "471 San Marino Dr - Kitchen", "days": 10}, {"name": "4592 Via Clarice - Bath", "days": 11}, {"name": "1407 Gillespie St - BATH", "days": 12}, {"name": "5634 Cielo Ave - Kitchen", "days": 13}, {"name": "441 Loma Alta - BATHROOM", "days": 14}, {"name": "811 Camino Viejo - 7x BATH", "days": 14}, {"name": "246 Spruce Drive - Master Bath", "days": 14}, {"name": "407 W Sola St - Kitchen", "days": 14}, {"name": "1151 Deer Hill Dr - Kitchen", "days": 14}, {"name": "5220 Coruna Court - Kitchen", "days": 16}, {"name": "4910 Sawyer Ave - BATH", "days": 18}, {"name": "6525 Camino Caseta -  KITCHEN", "days": 19}, {"name": "103 San Federico Ave - Kitchen", "days": 22}, {"name": "6506 Camino Venturoso - Kitchen", "days": 26}, {"name": "755 Cathedral Point Ln. KITCHEN", "days": 26}, {"name": "6506 Camino Venturoso Master Bathroom", "days": 26}, {"name": "316 N. Voluntario St. - BATH", "days": 26}, {"name": "382 Arboleda Road - CO - Kitchen", "days": 28}, {"name": "5527 Calle Arena - Kitchen", "days": 28}, {"name": "5551 Calle Arena (Carp) - KITCHEN", "days": 29}, {"name": "483 Reed Ct - Bath", "days": 34}, {"name": "4530 Via Clarice - Kitchen", "days": 35}, {"name": "4530 Via Clarice - Master Bath", "days": 35}, {"name": "704 San Roque Road - Kitchen", "days": 45}], "avg": 18, "min": 6, "max": 45, "has_data": true}, {"label": "Design Phase", "color": "#B8962E", "from": "#5 IDEAS or ON-SITE", "to": "CLOSING", "n": 1, "entries": [{"name": "5551 Calle Arena (Carp) - KITCHEN", "days": 92}], "has_data": false, "need": 1}], "table_hide": ["#5 on-site"]};
+// ── CONFIG ─────────────────────────────────────────────────────
+const SUPABASE_URL      = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let allProjects = SEED_DATA.projects;
-let timingData  = SEED_DATA.timing;
-let phaseData   = SEED_DATA.phases || [];
-let activePhase = 'ALL';
+// ── STATE ───────────────────────────────────────────────────────
+let allProjects  = [];
+let timingData   = [];
+let phaseData    = [];
+let activeFilter = 'ALL';
+let stepOrder    = {};   // step_name → step_number for sorting
+let autoTimer    = null;
 
-function colSort(name){
-  // Handle "# 5 IDEAS" style (hash space number)
-  let m = name.match(/^#\s*(\d+(?:\.\d+)?)/);
-  if(m) return parseFloat(m[1]);
-  m = name.match(/^(\d+)\s+/);
-  if(m) return parseFloat(m[1]);
-  const named={
-    'Formal Start':0.5,'IN PHASE SINCE':0.2,'Prestart Date':0.4,
-    'CLOSING':22,'pre-closing':21.5
-  };
-  return named[name]??999;
+// ── LOAD DATA FROM SUPABASE ─────────────────────────────────────
+async function loadData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.classList.add('spin');
+  document.getElementById('ts').textContent = 'Loading…';
+
+  try {
+    const [stepsRes, jobsRes, datesRes] = await Promise.all([
+      sb.from('steps').select('id,step_number,step_name').order('step_number'),
+      sb.from('jobs').select('id,address,job_type,status').eq('status','active').order('created_at',{ascending:false}),
+      sb.from('step_dates').select('job_id,step_id,event_date,source'),
+    ]);
+
+    if (stepsRes.error) throw new Error('Steps: ' + stepsRes.error.message);
+    if (jobsRes.error)  throw new Error('Jobs: '  + jobsRes.error.message);
+    if (datesRes.error) throw new Error('Dates: ' + datesRes.error.message);
+
+    const steps    = stepsRes.data || [];
+    const jobs     = jobsRes.data  || [];
+    const rawDates = datesRes.data || [];
+
+    // Build step lookup maps
+    const stepById   = Object.fromEntries(steps.map(s => [s.id, s]));
+    stepOrder        = Object.fromEntries(steps.map(s => [s.step_name, s.step_number]));
+
+    // Build date lookup: {job_id: {step_id: {date, source}}}
+    const dateLookup = {};
+    for (const row of rawDates) {
+      if (!dateLookup[row.job_id]) dateLookup[row.job_id] = {};
+      dateLookup[row.job_id][row.step_id] = { date: row.event_date, source: row.source || 'asana' };
+    }
+
+    // Build projects array
+    allProjects = jobs.map(job => {
+      const jDates   = dateLookup[job.id] || {};
+      const dates    = {};
+      const sources  = new Set();
+      for (const s of steps) {
+        const d = jDates[s.id];
+        if (d) {
+          dates[s.step_name] = d.date;
+          sources.add(d.source);
+        } else {
+          dates[s.step_name] = null;
+        }
+      }
+      const name = (job.address || '') + (job.job_type ? ' - ' + job.job_type : '');
+      // Compute a pseudo-phase from highest step with data
+      const lastStep = steps.filter(s => jDates[s.id]).sort((a,b) => b.step_number - a.step_number)[0];
+      let phase = null;
+      if (lastStep) {
+        if (lastStep.step_number >= 15) phase = 'CLOSING';
+        else if (lastStep.step_number >= 9)  phase = 'DESIGN';
+        else if (lastStep.step_number >= 5)  phase = 'CONCEPTS';
+        else if (lastStep.step_number >= 3)  phase = 'BUDGETING';
+        else phase = 'PROSPECT';
+      }
+      return { name, gid: job.id, phase, dates, sources: [...sources] };
+    });
+
+    // Compute timing data (consecutive step pairs)
+    timingData = [];
+    for (let i = 0; i < steps.length - 1; i++) {
+      const fromStep = steps[i];
+      const toStep   = steps[i+1];
+      const entries  = [];
+      for (const job of jobs) {
+        const jd       = dateLookup[job.id] || {};
+        const fromRow  = jd[fromStep.id];
+        const toRow    = jd[toStep.id];
+        if (!fromRow || !toRow) continue;
+        const diff = Math.round((new Date(toRow.date) - new Date(fromRow.date)) / 86400000);
+        if (diff < 0) continue;
+        const jName = (job.address||'') + (job.job_type ? ' - '+job.job_type : '');
+        entries.push({ name: jName, days: diff });
+      }
+      entries.sort((a,b) => a.days - b.days);
+      const n   = entries.length;
+      const avg = n ? Math.round(entries.reduce((s,e)=>s+e.days,0)/n) : 0;
+      timingData.push({
+        from: fromStep.step_name, to: toStep.step_name,
+        n, entries, avg,
+        min: n ? entries[0].days : 0,
+        max: n ? entries[n-1].days : 0,
+        has_data: n >= 2,
+        need: Math.max(0, 2-n),
+      });
+    }
+
+    // Compute phase summary cards
+    function phaseRange(fromNum, toNum, label, color) {
+      const fs = steps.find(s=>s.step_number===fromNum);
+      const ts = steps.find(s=>s.step_number===toNum);
+      if (!fs||!ts) return null;
+      const entries = [];
+      for (const job of jobs) {
+        const jd  = dateLookup[job.id]||{};
+        const fd  = jd[fs.id]; const td = jd[ts.id];
+        if (!fd||!td) continue;
+        const diff = Math.round((new Date(td.date)-new Date(fd.date))/86400000);
+        if (diff<0) continue;
+        const jName = (job.address||'')+(job.job_type?' - '+job.job_type:'');
+        entries.push({name:jName,days:diff});
+      }
+      entries.sort((a,b)=>a.days-b.days);
+      const n=entries.length;
+      const avg=n?Math.round(entries.reduce((s,e)=>s+e.days,0)/n):0;
+      return {label,color,from:fs.step_name,to:ts.step_name,n,entries,avg,
+        min:n?entries[0].days:0,max:n?entries[n-1].days:0,
+        has_data:n>=2,need:Math.max(0,2-n)};
+    }
+    phaseData = [
+      phaseRange(1, 4, 'Budget Phase',  '#2D5A41'),
+      phaseRange(5, 18,'Design Phase',  '#B8962E'),
+    ].filter(Boolean);
+
+    // Update timestamp
+    const now = new Date();
+    document.getElementById('ts').textContent =
+      'Live · Updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+
+    // Hide overlay and render
+    document.getElementById('overlay').classList.add('hidden');
+    renderStats();
+    renderFilters();
+    renderTable();
+    renderTiming();
+
+  } catch(e) {
+    console.error('Load error:', e);
+    document.getElementById('ts').textContent = 'Error loading data';
+    document.getElementById('tbl').innerHTML =
+      '<div class="err-msg">⚠ ' + (e.message||'Could not load data from Supabase.') + '</div>';
+    document.getElementById('overlay').classList.add('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('spin');
+  }
 }
-function parseD(v){return v?new Date(v+'T12:00:00'):null;}
-function fmtD(d){const now=new Date();return d.toLocaleDateString('en-US',d.getFullYear()===now.getFullYear()?{month:'short',day:'numeric'}:{month:'short',day:'numeric',year:'2-digit'});}
-function isToday(d){return d.toDateString()===new Date().toDateString();}
-function phaseClass(p){
-  if(!p)return 'bn';const u=p.toUpperCase();
-  if(['ACTIVE','DESIGN','CONSTRUCTION','INSTALL','BUILD','PRODUCTION','PRE PRODUCTION'].some(s=>u.includes(s)))return 'ba';
-  if(u.includes('LOST'))return 'bl';
-  if(['CLOSED','COMPLETE','DONE','FINISH'].some(s=>u.includes(s)))return 'bc';
-  if(['LEAD','PROSPECT','QUOTE','FIT','PRE','BUDGET'].some(s=>u.includes(s)))return 'bd';
-  return 'bn';
+
+// ── HELPERS ─────────────────────────────────────────────────────
+function parseD(v){ return v ? new Date(v+'T12:00:00') : null; }
+function fmtD(d){
+  const now=new Date();
+  return d.toLocaleDateString('en-US',
+    d.getFullYear()===now.getFullYear()
+      ? {month:'short',day:'numeric'}
+      : {month:'short',day:'numeric',year:'2-digit'});
 }
-function switchTab(tab,el){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');
-  document.getElementById('filter-bar').style.display=tab==='table'?'flex':'none';
-  document.getElementById('panel-table').style.display=tab==='table'?'flex':'none';
-  document.getElementById('panel-timing').classList.toggle('show',tab==='timing');
-}
+function isToday(d){ return d.toDateString()===new Date().toDateString(); }
+
+// ── STATS BAR ──────────────────────────────────────────────────
 function renderStats(){
-  const sb=document.getElementById('stats-bar');
-  const total=allProjects.length;
-  const withDates=allProjects.filter(p=>Object.values(p.dates||{}).some(d=>d)).length;
-  const phases={};allProjects.forEach(p=>{const ph=p.phase||'—';phases[ph]=(phases[ph]||0)+1;});
-  let html=sv(total,'Total Projects')+dv()+sv(withDates,'With Dates');
-  Object.entries(phases).sort((a,b)=>b[1]-a[1]).slice(0,4).forEach(([ph,ct])=>{html+=dv()+sv(ct,ph);});
-  sb.innerHTML=html;
+  const sb2=document.getElementById('stats-bar');
+  const total   = allProjects.length;
+  const withDates = allProjects.filter(p=>Object.values(p.dates||{}).some(d=>d)).length;
+  const phases  = {};
+  allProjects.forEach(p=>{ const ph=p.phase||'—'; phases[ph]=(phases[ph]||0)+1; });
+  let html = sv(total,'Total Projects')+dv()+sv(withDates,'With Dates');
+  Object.entries(phases).sort((a,b)=>b[1]-a[1]).slice(0,4).forEach(([ph,ct])=>{
+    html+=dv()+sv(ct,ph);
+  });
+  sb2.innerHTML=html;
 }
-function sv(v,l){return `<div class="stat"><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div>`;}
-function dv(){return `<div class="stat-div"></div>`;}
+function sv(v,l){ return `<div class="stat"><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div>`; }
+function dv()   { return `<div class="stat-div"></div>`; }
+
+// ── FILTER BAR ─────────────────────────────────────────────────
 function renderFilters(){
   const fb=document.getElementById('filter-bar');
   const phases=['ALL',...[...new Set(allProjects.map(p=>p.phase||'—'))].sort()];
-  fb.innerHTML=phases.map(p=>`<div class="pill${p===activePhase?' on':''}" onclick="setPhase('${p}')">${p}</div>`).join('')
-    +`<input class="search" id="si" placeholder="Search projects…" oninput="renderTable()">`;
+  fb.innerHTML=phases.map(p=>
+    `<div class="pill${p===activeFilter?' on':''}" onclick="setFilter('${p}')">${p}</div>`
+  ).join('')
+  +`<input class="search" id="si" placeholder="Search projects…" oninput="renderTable()">`;
 }
-function setPhase(p){activePhase=p;renderFilters();renderTable();}
+function setFilter(p){ activeFilter=p; renderFilters(); renderTable(); }
+
+// ── TABLE ──────────────────────────────────────────────────────
 function renderTable(){
   const wrap=document.getElementById('tbl');
-  const q=(document.getElementById('si')?.value||'').toLowerCase();
   const today=new Date();
+  const q=(document.getElementById('si')?.value||'').toLowerCase();
+
   const projects=allProjects.filter(p=>{
-    if(activePhase!=='ALL'&&(p.phase||'—')!==activePhase)return false;
-    if(q&&!p.name.toLowerCase().includes(q))return false;
+    if(activeFilter!=='ALL'&&(p.phase||'—')!==activeFilter) return false;
+    if(q&&!p.name.toLowerCase().includes(q)) return false;
     return true;
   });
-  if(!projects.length){wrap.innerHTML='<div class="empty">No projects match.</div>';return;}
-  const colSet=new Set();
+
+  if(!projects.length){
+    wrap.innerHTML='<div class="empty">No projects match.</div>';
+    return;
+  }
+
+  // Build column list from all steps in order
+  const cols=[...new Set(
+    Object.keys(stepOrder)
+  )].sort((a,b)=>(stepOrder[a]||0)-(stepOrder[b]||0));
+
+  let html=`<table><thead><tr>
+    <th><div class="th-inner">Project</div></th>
+    ${cols.map(c=>`<th title="${c}"><div class="th-inner">${c}</div></th>`).join('')}
+  </tr></thead><tbody>`;
+
   projects.forEach(p=>{
-    const d=p.dates||{};
-    Object.keys(d).forEach(k=>{
-      if(TABLE_HIDE.has(k.trim().toLowerCase()))return;
-      if(d[k]||ALWAYS_SHOW.has(k))colSet.add(k);
-    });
-  });
-  ALWAYS_SHOW.forEach(c=>colSet.add(c));
-  const cols=[...colSet].sort((a,b)=>colSort(a)-colSort(b));
-  let html=`<table><thead><tr><th><div class="th-inner">Project</div></th>${cols.map(c=>`<th title="${c}"><div class="th-inner">${c}</div></th>`).join('')}</tr></thead><tbody>`;
-  projects.forEach(p=>{
-    const dates=p.dates||{};const pc=phaseClass(p.phase);
-    html+=`<tr><td class="pname"><div class="pn-text" title="${p.name}">${p.name}</div>${p.phase?`<div class="ph-badge ${pc}">${p.phase}</div>`:''}</td>`;
+    const dates=p.dates||{};
+
+    // Source badges
+    const srcBadges = (p.sources||[]).map(s=>
+      `<span class="src-badge ${s}">${s}</span>`
+    ).join('');
+
+    html+=`<tr>
+      <td class="pname">
+        <div class="pn-text" title="${p.name}">${p.name}</div>
+        ${srcBadges ? `<div class="src-badges">${srcBadges}</div>` : ''}
+      </td>`;
+
     cols.forEach(c=>{
       const d=parseD(dates[c]);
-      if(!d){html+=`<td class="dcell"><div class="dash"></div></td>`;return;}
-      const tod=isToday(d),past=!tod&&d<today,cls=tod?'today':past?'past':'fut';
+      if(!d){ html+=`<td class="dcell"><div class="dash"></div></td>`; return; }
+      const tod=isToday(d), past=!tod&&d<today;
+      const cls=tod?'today':past?'past':'fut';
       html+=`<td class="dcell"><div class="chip ${cls}">${fmtD(d)}</div></td>`;
     });
     html+=`</tr>`;
   });
   wrap.innerHTML=html+'</tbody></table>';
 }
+
+// ── TIMING TAB ─────────────────────────────────────────────────
+function switchTab(tab,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('filter-bar').style.display  = tab==='table'?'flex':'none';
+  document.getElementById('panel-table').style.display = tab==='table'?'flex':'none';
+  document.getElementById('panel-timing').classList.toggle('show',tab==='timing');
+}
+
 function renderTiming(){
   const panel=document.getElementById('panel-timing');
   const hasData=timingData.filter(r=>r.has_data);
   const maxAvg=hasData.length?Math.max(...hasData.map(r=>r.avg)):1;
+
   let html=`<div class="timing-header">Step Timing Breakdown</div>
-<div class="timing-sub">Average calendar days between stages — ${allProjects.length} projects · minimum 2 entries required · click any card to see individual jobs</div>`;
-  html+=`<div class="phase-row">`;
+<div class="timing-sub">Average calendar days between stages — ${allProjects.length} projects · minimum 2 entries required · click any card to see individual jobs</div>
+<div class="phase-row">`;
+
   phaseData.forEach((ph,i)=>{
     if(ph.has_data){
       html+=`<div class="ph-sum-card" style="--ph-color:${ph.color}" onclick="openModal(phaseData[${i}])">
@@ -287,7 +466,9 @@ function renderTiming(){
 </div>`;
     }
   });
+
   html+=`</div><div class="timing-divider"><span>Step by Step</span></div><div class="timing-grid">`;
+
   timingData.forEach((r,i)=>{
     if(r.has_data){
       const pct=Math.round((r.avg/maxAvg)*100);
@@ -307,15 +488,20 @@ function renderTiming(){
 </div>`;
     }
   });
+
   html+=`</div>`;
   panel.innerHTML=html;
 }
+
+// ── MODAL ──────────────────────────────────────────────────────
 function openModal(row){
   const entries=row.entries||[];
   const maxDays=entries.length?Math.max(...entries.map(e=>e.days)):1;
   const avg=row.avg;
   document.getElementById('modal-title').textContent=row.label||`${row.from} → ${row.to}`;
-  document.getElementById('modal-sub').textContent=row.label?`${row.from} → ${row.to} · end-to-end`:`Step transition · ${entries.length} projects`;
+  document.getElementById('modal-sub').textContent=row.label
+    ?`${row.from} → ${row.to} · end-to-end`
+    :`Step transition · ${entries.length} projects`;
   let body=`<div class="modal-avg-row">
   <div class="modal-stat"><div class="modal-stat-val">${row.avg}d</div><div class="modal-stat-lbl">Average</div></div>
   <div class="modal-stat"><div class="modal-stat-val">${row.min}d</div><div class="modal-stat-lbl">Fastest</div></div>
@@ -334,14 +520,23 @@ function openModal(row){
   document.getElementById('modal-body').innerHTML=body;
   document.getElementById('modal-overlay').classList.add('show');
 }
+
 function closeModal(e){
   if(!e||e.target===document.getElementById('modal-overlay')||e.currentTarget?.classList.contains('modal-close'))
     document.getElementById('modal-overlay').classList.remove('show');
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('modal-overlay').classList.remove('show');});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') document.getElementById('modal-overlay').classList.remove('show');
+});
+
+// ── INIT ───────────────────────────────────────────────────────
 document.getElementById('filter-bar').style.display='flex';
 document.getElementById('panel-table').style.display='flex';
-renderStats();renderFilters();renderTable();renderTiming();
+
+loadData();
+// Auto-refresh every 5 minutes
+autoTimer = setInterval(loadData, 5 * 60 * 1000);
 </script>
 </body>
 </html>
