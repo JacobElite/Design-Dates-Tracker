@@ -243,7 +243,7 @@ async function loadData(manual=false) {
   try {
     const [jobsRes, eventsRes, stepsRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/jobs?select=id,address,client_name,status,job_type,started_at&order=address`, { headers: HEADERS }),
-      fetch(`${SUPABASE_URL}/rest/v1/calendar_events?select=date,job_id,step_id&order=date`, { headers: HEADERS }),
+      fetch(`${SUPABASE_URL}/rest/v1/calendar_events?select=event_date,job_id,step_id&order=event_date`, { headers: HEADERS }),
       fetch(`${SUPABASE_URL}/rest/v1/steps?select=id,step_number,step_name&order=step_number`, { headers: HEADERS })
     ]);
 
@@ -255,24 +255,23 @@ async function loadData(manual=false) {
     const events = await eventsRes.json();
     const steps  = await stepsRes.json();
 
-    // Build step lookup: step_id (uuid) -> { step_number, step_name }
+    // Build step lookup: step_number (int) -> step_name
     const stepById = {};
-    for (const s of steps) stepById[s.id] = { step_number: s.step_number, step_name: s.step_name };
+    for (const s of steps) stepById[s.step_number] = s.step_name;
 
     // Build step metadata and pivot dates
     stepNames = {};
     const datesByJob = {}; // job_id -> { step_number -> date }
 
     for (const ev of events) {
-      if (!ev.date || !ev.step_id) continue;
-      const step = stepById[ev.step_id];
-      if (!step) continue;
-      const { step_number, step_name } = step;
-      stepNames[step_number] = step_name;
+      if (!ev.event_date || !ev.step_id) continue;
+      const step_name = stepById[ev.step_id];
+      if (!step_name) continue;
+      stepNames[ev.step_id] = step_name;
       if (!datesByJob[ev.job_id]) datesByJob[ev.job_id] = {};
       // Keep the latest date per step per job (handles rescheduling)
-      const cur = datesByJob[ev.job_id][step_number];
-      if (!cur || ev.date > cur) datesByJob[ev.job_id][step_number] = ev.date;
+      const cur = datesByJob[ev.job_id][ev.step_id];
+      if (!cur || ev.event_date > cur) datesByJob[ev.job_id][ev.step_id] = ev.event_date;
     }
 
     stepNums = Object.keys(stepNames).map(Number).sort((a,b)=>a-b);
