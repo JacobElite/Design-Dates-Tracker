@@ -241,25 +241,33 @@ async function loadData(manual=false) {
   errBar.style.display = 'none';
 
   try {
-    const [jobsRes, eventsRes] = await Promise.all([
+    const [jobsRes, eventsRes, stepsRes] = await Promise.all([
       fetch(`${SUPABASE_URL}/rest/v1/jobs?select=id,address,client_name,status,job_type,started_at&order=address`, { headers: HEADERS }),
-      fetch(`${SUPABASE_URL}/rest/v1/calendar_events?select=date,job_id,step_id,steps(step_number,step_name)&order=date`, { headers: HEADERS })
+      fetch(`${SUPABASE_URL}/rest/v1/calendar_events?select=date,job_id,step_id&order=date`, { headers: HEADERS }),
+      fetch(`${SUPABASE_URL}/rest/v1/steps?select=id,step_number,step_name&order=step_number`, { headers: HEADERS })
     ]);
 
-    if (!jobsRes.ok) throw new Error(`Jobs: ${jobsRes.status} ${await jobsRes.text()}`);
-    if (!eventsRes.ok) throw new Error(`Events: ${eventsRes.status} ${await eventsRes.text()}`);
+    if (!jobsRes.ok)    throw new Error(`Jobs: ${jobsRes.status} ${await jobsRes.text()}`);
+    if (!eventsRes.ok)  throw new Error(`Events: ${eventsRes.status} ${await eventsRes.text()}`);
+    if (!stepsRes.ok)   throw new Error(`Steps: ${stepsRes.status} ${await stepsRes.text()}`);
 
     const jobs   = await jobsRes.json();
     const events = await eventsRes.json();
+    const steps  = await stepsRes.json();
+
+    // Build step lookup: step_id (uuid) -> { step_number, step_name }
+    const stepById = {};
+    for (const s of steps) stepById[s.id] = { step_number: s.step_number, step_name: s.step_name };
 
     // Build step metadata and pivot dates
     stepNames = {};
-    const datesByJob = {};    // job_id -> { step_number -> date }
-    const entriesByStep = {}; // "stepA->stepB" -> [{name, days}]
+    const datesByJob = {}; // job_id -> { step_number -> date }
 
     for (const ev of events) {
-      if (!ev.steps || !ev.date) continue;
-      const { step_number, step_name } = ev.steps;
+      if (!ev.date || !ev.step_id) continue;
+      const step = stepById[ev.step_id];
+      if (!step) continue;
+      const { step_number, step_name } = step;
       stepNames[step_number] = step_name;
       if (!datesByJob[ev.job_id]) datesByJob[ev.job_id] = {};
       // Keep the latest date per step per job (handles rescheduling)
