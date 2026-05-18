@@ -9,7 +9,7 @@
 <title>Design Project Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -189,8 +189,8 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 </div>
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────
-const SUPABASE_URL      = 'https://cdatfhovpermqptkfmbc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkYXRmaG92cGVybXFwdGtmbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODYwMzUsImV4cCI6MjA5Mzc2MjAzNX0.r53ZXOCowIhGxX10lf2ggYgZHMKfQK6v0IdmHDxv-fE';
+const SUPABASE_URL      = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
 let sb = null; // initialized safely inside loadData()
 
 // ── STATE ───────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ async function loadData() {
 
     const [stepsRes, jobsRes, datesRes] = await Promise.all([
       sb.from('steps').select('id,step_number,step_name').order('step_number'),
-      sb.from('jobs').select('id,address,job_type,status').eq('status','active').order('created_at',{ascending:false}),
+      sb.from('jobs').select('id,address,job_type,status').order('created_at',{ascending:false}),
       sb.from('step_dates').select('job_id,step_id,event_date,source'),
     ]);
 
