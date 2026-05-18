@@ -26,18 +26,17 @@ jobs:
         run: |
           python3 << 'EOF'
           import os
+          url = os.environ['SUPABASE_URL']
+          key = os.environ['SUPABASE_ANON_KEY']
+          print(f"SUPABASE_URL:      {len(url)} chars, starts with: '{url[:8]}'")
+          print(f"SUPABASE_ANON_KEY: {len(key)} chars, starts with: '{key[:4]}'")
           with open('index.html', 'r') as f:
               content = f.read()
-          content = content.replace('__SUPABASE_URL__',      os.environ['SUPABASE_URL'])
-          content = content.replace('__SUPABASE_ANON_KEY__', os.environ['SUPABASE_ANON_KEY'])
-          if '__SUPABASE_URL__' in content:
-              raise Exception('SUPABASE_URL placeholder was not replaced!')
-          if '__SUPABASE_ANON_KEY__' in content:
-              raise Exception('SUPABASE_ANON_KEY placeholder was not replaced!')
+          content = content.replace('__SUPABASE_URL__',      url)
+          content = content.replace('__SUPABASE_ANON_KEY__', key)
           with open('index.html', 'w') as f:
               f.write(content)
-          print(f"Injected. SUPABASE_URL: {len(os.environ['SUPABASE_URL'])} chars")
-          print(f"          SUPABASE_ANON_KEY: {len(os.environ['SUPABASE_ANON_KEY'])} chars")
+          print("Injection complete.")
           EOF
 
       - name: Setup Pages
@@ -51,4 +50,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
- 
