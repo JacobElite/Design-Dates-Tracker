@@ -225,18 +225,6 @@ async function loadData() {
     const jobs     = await jobsResp.json();
     const rawDates = await datesResp.json();
 
-    // DEBUG — remove once working
-    console.log('=== SUPABASE DATA ===');
-    console.log('steps:', steps.length, steps[0]);
-    console.log('jobs:', jobs.length, jobs[0]);
-    console.log('rawDates:', rawDates.length, rawDates[0]);
-    // Show a sample step_id from rawDates and compare to steps[0].id types
-    if(rawDates.length > 0) {
-      console.log('step_id type:', typeof rawDates[0].step_id, '| value:', rawDates[0].step_id);
-    }
-    if(steps.length > 0) {
-      console.log('steps[0].id type:', typeof steps[0].id, '| value:', steps[0].id);
-    }
 
     // Build step lookup maps
     const stepById   = Object.fromEntries(steps.map(s => [s.id, s]));
@@ -256,7 +244,7 @@ async function loadData() {
       const dates    = {};
       const sources  = new Set();
       for (const s of steps) {
-        const d = jDates[Number(s.id)];
+        const d = jDates[Number(s.step_number)];
         if (d) {
           dates[s.step_name] = d.date;
           sources.add(d.source);
@@ -266,7 +254,7 @@ async function loadData() {
       }
       const name = (job.address || '') + (job.job_type ? ' - ' + job.job_type : '');
       // Compute a pseudo-phase from highest step with data
-      const lastStep = steps.filter(s => jDates[Number(s.id)]).sort((a,b) => b.step_number - a.step_number)[0];
+      const lastStep = steps.filter(s => jDates[Number(s.step_number)]).sort((a,b) => b.step_number - a.step_number)[0];
       let phase = null;
       if (lastStep) {
         if (lastStep.step_number >= 15) phase = 'CLOSING';
@@ -286,8 +274,8 @@ async function loadData() {
       const entries  = [];
       for (const job of jobs) {
         const jd       = dateLookup[job.id] || {};
-        const fromRow  = jd[Number(fromStep.id)];
-        const toRow    = jd[Number(toStep.id)];
+        const fromRow  = jd[Number(fromStep.step_number)];
+        const toRow    = jd[Number(toStep.step_number)];
         if (!fromRow || !toRow) continue;
         const diff = Math.round((new Date(toRow.date) - new Date(fromRow.date)) / 86400000);
         if (diff < 0) continue;
@@ -315,7 +303,7 @@ async function loadData() {
       const entries = [];
       for (const job of jobs) {
         const jd  = dateLookup[job.id]||{};
-        const fd  = jd[fs.id]; const td = jd[ts.id];
+        const fd  = jd[Number(fs.step_number)]; const td = jd[Number(ts.step_number)];
         if (!fd||!td) continue;
         const diff = Math.round((new Date(td.date)-new Date(fd.date))/86400000);
         if (diff<0) continue;
