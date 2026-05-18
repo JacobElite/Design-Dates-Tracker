@@ -209,9 +209,11 @@ async function loadData() {
   document.getElementById('ts').textContent = 'Loading…';
 
   try {
-    // Create Supabase client (errors caught below)
+    // Create Supabase client — ensure URL has https:// prefix
     if (!sb) {
-      sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      let url = SUPABASE_URL.trim();
+      if (url && !url.startsWith('http')) url = 'https://' + url;
+      sb = supabase.createClient(url, SUPABASE_ANON_KEY.trim());
     }
 
     const [stepsRes, jobsRes, datesRes] = await Promise.all([
@@ -551,4 +553,4 @@ loadData();
 autoTimer = setInterval(loadData, 5 * 60 * 1000);
 </script>
 </body>
-</html> 
+</html>
