@@ -189,8 +189,8 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 </div>
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────
-const SUPABASE_URL      = 'https://cdatfhovpermqptkfmbc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkYXRmaG92cGVybXFwdGtmbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODYwMzUsImV4cCI6MjA5Mzc2MjAzNX0.r53ZXOCowIhGxX10lf2ggYgZHMKfQK6v0IdmHDxv-fE';
+const SUPABASE_URL      = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
 let sb = null; // initialized safely inside loadData()
 
 // ── STATE ───────────────────────────────────────────────────────
@@ -235,10 +235,11 @@ async function loadData() {
     stepOrder        = Object.fromEntries(steps.map(s => [s.step_name, s.step_number]));
 
     // Build date lookup: {job_id: {step_id: {date, source}}}
+    // Coerce step_id to Number to avoid string/int mismatch
     const dateLookup = {};
     for (const row of rawDates) {
       if (!dateLookup[row.job_id]) dateLookup[row.job_id] = {};
-      dateLookup[row.job_id][row.step_id] = { date: row.event_date, source: row.source || 'asana' };
+      dateLookup[row.job_id][Number(row.step_id)] = { date: row.event_date, source: row.source || 'asana' };
     }
 
     // Build projects array
@@ -247,7 +248,7 @@ async function loadData() {
       const dates    = {};
       const sources  = new Set();
       for (const s of steps) {
-        const d = jDates[s.id];
+        const d = jDates[Number(s.id)];
         if (d) {
           dates[s.step_name] = d.date;
           sources.add(d.source);
@@ -257,7 +258,7 @@ async function loadData() {
       }
       const name = (job.address || '') + (job.job_type ? ' - ' + job.job_type : '');
       // Compute a pseudo-phase from highest step with data
-      const lastStep = steps.filter(s => jDates[s.id]).sort((a,b) => b.step_number - a.step_number)[0];
+      const lastStep = steps.filter(s => jDates[Number(s.id)]).sort((a,b) => b.step_number - a.step_number)[0];
       let phase = null;
       if (lastStep) {
         if (lastStep.step_number >= 15) phase = 'CLOSING';
@@ -277,8 +278,8 @@ async function loadData() {
       const entries  = [];
       for (const job of jobs) {
         const jd       = dateLookup[job.id] || {};
-        const fromRow  = jd[fromStep.id];
-        const toRow    = jd[toStep.id];
+        const fromRow  = jd[Number(fromStep.id)];
+        const toRow    = jd[Number(toStep.id)];
         if (!fromRow || !toRow) continue;
         const diff = Math.round((new Date(toRow.date) - new Date(fromRow.date)) / 86400000);
         if (diff < 0) continue;
