@@ -225,6 +225,19 @@ async function loadData() {
     const jobs     = await jobsResp.json();
     const rawDates = await datesResp.json();
 
+    // DEBUG — remove once working
+    console.log('=== SUPABASE DATA ===');
+    console.log('steps:', steps.length, steps[0]);
+    console.log('jobs:', jobs.length, jobs[0]);
+    console.log('rawDates:', rawDates.length, rawDates[0]);
+    // Show a sample step_id from rawDates and compare to steps[0].id types
+    if(rawDates.length > 0) {
+      console.log('step_id type:', typeof rawDates[0].step_id, '| value:', rawDates[0].step_id);
+    }
+    if(steps.length > 0) {
+      console.log('steps[0].id type:', typeof steps[0].id, '| value:', steps[0].id);
+    }
+
     // Build step lookup maps
     const stepById   = Object.fromEntries(steps.map(s => [s.id, s]));
     stepOrder        = Object.fromEntries(steps.map(s => [s.step_name, s.step_number]));
