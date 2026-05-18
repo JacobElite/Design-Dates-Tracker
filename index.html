@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Design Project Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -206,19 +209,7 @@ async function loadData() {
   document.getElementById('ts').textContent = 'Loading…';
 
   try {
-    // Validate and create Supabase client
-    // Note: we check URL format, NOT placeholder strings, because the
-    // Python injector replaces those strings everywhere including in checks.
-    if (!SUPABASE_URL || !SUPABASE_URL.startsWith('http') || SUPABASE_URL.length < 20 ||
-        !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.length < 50) {
-      throw new Error(
-        'Supabase credentials are missing or invalid.\n\n' +
-        'Make sure SUPABASE_URL and SUPABASE_ANON_KEY are set in\n' +
-        'Design-Dates-Tracker repo → Settings → Secrets → Actions,\n' +
-        'then re-run the Deploy workflow.\n\n' +
-        'URL length: ' + SUPABASE_URL.length + ' chars, Key length: ' + SUPABASE_ANON_KEY.length + ' chars'
-      );
-    }
+    // Create Supabase client (errors caught below)
     if (!sb) {
       sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
