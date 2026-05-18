@@ -19,43 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inject Supabase credentials
-        env:
-          SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          python3 << 'EOF'
-          import os, re
-          url = os.environ['SUPABASE_URL'].strip()
-          key = os.environ['SUPABASE_ANON_KEY'].strip()
-          print(f"URL: {len(url)} chars, starts with '{url[:8]}'")
-          print(f"KEY: {len(key)} chars, starts with '{key[:4]}'")
-          with open('index.html', 'r') as f:
-              content = f.read()
-          # Replace the JS constant declarations directly — works regardless of placeholder format
-          content = re.sub(
-              r"const SUPABASE_URL\s*=\s*'[^']*'",
-              f"const SUPABASE_URL = '{url}'",
-              content
-          )
-          content = re.sub(
-              r"const SUPABASE_ANON_KEY\s*=\s*'[^']*'",
-              f"const SUPABASE_ANON_KEY = '{key}'",
-              content
-          )
-          # Fallback: also replace any placeholder variants
-          content = re.sub(r'__[Ss][Uu][Pp][Aa][Bb][Aa][Ss][Ee]_[Uu][Rr][Ll]__', url, content)
-          content = re.sub(r'__[Ss][Uu][Pp][Aa][Bb][Aa][Ss][Ee]_[Aa][Nn][Oo][Nn]_[Kk][Ee][Yy]__', key, content)
-          with open('index.html', 'w') as f:
-              f.write(content)
-          print("Done. Verifying...")
-          with open('index.html', 'r') as f:
-              deployed = f.read()
-          assert url in deployed, "ERROR: URL not found in deployed file!"
-          assert key[:20] in deployed, "ERROR: KEY not found in deployed file!"
-          print("Verification passed.")
-          EOF
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
