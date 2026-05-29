@@ -522,6 +522,8 @@ async function saveJobName(jobId, newName){
     proj.name=newName;
     showToast('Renamed to: '+newName);
   } else {
+    const errText = await resp.text();
+    console.error('job rename failed', resp.status, errText);
     showToast('Save failed: '+resp.status, true);
   }
 }
@@ -552,6 +554,8 @@ async function saveStepDate(jobId, stepName, newDate, inputEl){
       showToast('Date saved');
     } else {
       if(inputEl) inputEl.style.opacity='';
+      const errText = await resp.text();
+      console.error('step_dates save failed', resp.status, errText);
       showToast('Save failed: '+resp.status, true);
     }
   }
@@ -596,6 +600,8 @@ async function deleteJob(jobId, jobName){
     renderStats();
     showToast('Archived: '+jobName);
   } else {
+    const errText = await resp.text();
+    console.error('job archive failed', resp.status, errText);
     showToast('Delete failed: '+resp.status, true);
   }
 }
