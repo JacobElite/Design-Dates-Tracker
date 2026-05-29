@@ -140,6 +140,30 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 .job-bar-wrap{width:80px;height:4px;background:var(--warm);border-radius:2px;overflow:hidden;flex-shrink:0;}
 .job-bar{height:100%;border-radius:2px;background:var(--g-light);}
 .job-bar.above{background:var(--amber);}
+
+/* ── EDIT MODE ── */
+.edit-toggle{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:4px;border:1px solid rgba(245,237,216,.2);background:rgba(245,237,216,.08);color:rgba(245,237,216,.7);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.edit-toggle:hover{background:rgba(245,237,216,.15);color:#F5EDD8;}
+.edit-toggle.on{background:rgba(184,150,46,.2);border-color:rgba(184,150,46,.5);color:var(--gold-l);}
+.edit-mode-bar{display:none;background:#FEF3C7;border-bottom:2px solid var(--gold);padding:8px 24px;font-size:11px;color:#92400E;align-items:center;gap:10px;flex-shrink:0;}
+.edit-mode-bar.show{display:flex;}
+.edit-mode-bar strong{font-weight:600;}
+td.dcell.editing{padding:4px 3px;}
+td.dcell.editing .chip{display:none;}
+td.dcell.editing .dash{display:none;}
+.date-input-cell{width:86px;font-size:11px;padding:4px 5px;border:1px solid var(--border);border-radius:4px;font-family:'DM Sans',sans-serif;color:var(--char);background:white;cursor:pointer;}
+.date-input-cell:focus{outline:none;border-color:var(--g-light);}
+.date-input-cell.has-val{border-color:#C2DEC9;background:#F0FAF4;}
+.date-clear-btn{font-size:14px;line-height:1;background:none;border:none;cursor:pointer;color:var(--gray);padding:0 1px;vertical-align:middle;}
+.date-clear-btn:hover{color:var(--red);}
+.pname.editing{padding-right:8px;}
+.pname-input{width:100%;font-size:12px;font-weight:500;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:4px;padding:3px 6px;color:var(--char);background:white;}
+.pname-input:focus{outline:none;border-color:var(--g-light);}
+.del-btn{background:none;border:none;cursor:pointer;color:rgba(153,27,27,.5);padding:0;font-size:14px;line-height:1;flex-shrink:0;transition:color .15s;}
+.del-btn:hover{color:var(--red);}
+.save-cell-btn{font-size:9px;text-transform:uppercase;letter-spacing:.07em;background:var(--g-dark);color:#F5EDD8;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;margin-top:2px;display:block;width:100%;}
+.save-cell-btn:hover{background:var(--g-mid);}
+.edit-saving{opacity:.5;pointer-events:none;}
 </style>
 </head>
 <body>
@@ -167,8 +191,17 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
       </svg>
       Refresh
     </button>
+    <button class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
+      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11 2l3 3-8 8H3v-3L11 2z"/></svg>
+      Edit
+    </button>
   </header>
   <div id="stats-bar"></div>
+  <div class="edit-mode-bar" id="editModeBar">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11 2l3 3-8 8H3v-3L11 2z"/></svg>
+    <strong>Edit mode:</strong> Click any date to change it · Click a project name to rename · Click ✕ to delete a project · Changes save immediately to Supabase
+    <button onclick="toggleEditMode()" style="margin-left:auto;background:none;border:1px solid #92400E;color:#92400E;border-radius:4px;padding:3px 10px;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;">Done editing</button>
+  </div>
   <div id="tabs">
     <div class="tab on" onclick="switchTab('table',this)">Projects</div>
     <div class="tab" onclick="switchTab('timing',this)">Step Timing</div>
@@ -188,8 +221,8 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 </div>
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────
-const SUPABASE_URL      = 'https://cdatfhovpermqptkfmbc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkYXRmaG92cGVybXFwdGtmbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODYwMzUsImV4cCI6MjA5Mzc2MjAzNX0.r53ZXOCowIhGxX10lf2ggYgZHMKfQK6v0IdmHDxv-fE';
+const SUPABASE_URL      = '__SUPABASE_URL__';
+const SUPABASE_ANON_KEY = '__SUPABASE_ANON_KEY__';
 
 // ── STATE ───────────────────────────────────────────────────────
 let allProjects  = [];
@@ -198,6 +231,7 @@ let phaseData    = [];
 let activeFilter = 'ALL';
 let stepOrder    = {};   // step_name → step_number for sorting
 let autoTimer    = null;
+let editMode     = false;
 
 // ── LOAD DATA FROM SUPABASE ─────────────────────────────────────
 async function loadData() {
@@ -405,10 +439,7 @@ function renderTable(){
     return;
   }
 
-  // Build column list from all steps in order
-  const cols=[...new Set(
-    Object.keys(stepOrder)
-  )].sort((a,b)=>(stepOrder[a]||0)-(stepOrder[b]||0));
+  const cols=[...new Set(Object.keys(stepOrder))].sort((a,b)=>(stepOrder[a]||0)-(stepOrder[b]||0));
 
   let html=`<table><thead><tr>
     <th><div class="th-inner">Project</div></th>
@@ -417,28 +448,173 @@ function renderTable(){
 
   projects.forEach(p=>{
     const dates=p.dates||{};
+    const srcBadges=(p.sources||[]).map(s=>`<span class="src-badge ${s}">${s}</span>`).join('');
 
-    // Source badges
-    const srcBadges = (p.sources||[]).map(s=>
-      `<span class="src-badge ${s}">${s}</span>`
-    ).join('');
-
-    html+=`<tr>
-      <td class="pname">
-        <div class="pn-text" title="${p.name}">${p.name}</div>
-        ${srcBadges ? `<div class="src-badges">${srcBadges}</div>` : ''}
-      </td>`;
+    if(editMode){
+      // Edit mode: inline inputs
+      html+=`<tr>
+        <td class="pname editing" style="display:flex;align-items:center;gap:5px">
+          <input class="pname-input" value="${p.name.replace(/"/g,'&quot;')}" 
+            onblur="saveJobName('${p.gid}',this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()" />
+          <button class="del-btn" onclick="deleteJob('${p.gid}','${p.name.replace(/'/g,"\'")}')">✕</button>
+        </td>`;
+    } else {
+      html+=`<tr>
+        <td class="pname">
+          <div class="pn-text" title="${p.name}">${p.name}</div>
+          ${srcBadges ? `<div class="src-badges">${srcBadges}</div>` : ''}
+        </td>`;
+    }
 
     cols.forEach(c=>{
       const d=parseD(dates[c]);
-      if(!d){ html+=`<td class="dcell"><div class="dash"></div></td>`; return; }
-      const tod=isToday(d), past=!tod&&d<today;
-      const cls=tod?'today':past?'past':'fut';
-      html+=`<td class="dcell"><div class="chip ${cls}">${fmtD(d)}</div></td>`;
+      if(editMode){
+        const val=dates[c]||'';
+        html+=`<td class="dcell editing">
+          <input type="date" class="date-input-cell${val?' has-val':''}" 
+            value="${val}" data-job="${p.gid}" data-step="${c}"
+            onchange="saveStepDate('${p.gid}','${c}',this.value,this)"
+            oninput="this.classList.toggle('has-val',!!this.value)" />
+          ${val?`<button class="date-clear-btn" onclick="clearStepDate('${p.gid}','${c}',this)" title="Clear date">×</button>`:''}
+        </td>`;
+      } else {
+        if(!d){ html+=`<td class="dcell"><div class="dash"></div></td>`; return; }
+        const tod=isToday(d), past=!tod&&d<today;
+        const cls=tod?'today':past?'past':'fut';
+        html+=`<td class="dcell"><div class="chip ${cls}">${fmtD(d)}</div></td>`;
+      }
     });
     html+=`</tr>`;
   });
   wrap.innerHTML=html+'</tbody></table>';
+}
+
+// ── EDIT MODE TOGGLE ────────────────────────────────────────────
+function toggleEditMode(){
+  editMode=!editMode;
+  document.getElementById('editToggle').classList.toggle('on',editMode);
+  document.getElementById('editModeBar').classList.toggle('show',editMode);
+  if(!editMode) loadData(); // refresh after edits done
+  else renderTable();
+}
+
+// ── SAVE JOB NAME ───────────────────────────────────────────────
+async function saveJobName(jobId, newName){
+  newName=newName.trim();
+  if(!newName) return;
+  const proj=allProjects.find(p=>p.gid===jobId);
+  if(!proj||proj.name===newName) return;
+
+  // Parse address and job_type from "address - jobtype"
+  const dashIdx=newName.indexOf(' - ');
+  const address = dashIdx>=0 ? newName.substring(0,dashIdx).trim() : newName;
+  const job_type= dashIdx>=0 ? newName.substring(dashIdx+3).trim() : '';
+
+  const base=SUPABASE_URL.trim().replace(/\/$/, '');
+  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+               'Content-Type':'application/json','Prefer':'return=minimal'};
+  const resp=await fetch(base+'/rest/v1/jobs?id=eq.'+jobId, {
+    method:'PATCH', headers:hdrs,
+    body:JSON.stringify({address, job_type: job_type||null})
+  });
+  if(resp.ok){
+    proj.name=newName;
+    showToast('Renamed to: '+newName);
+  } else {
+    showToast('Save failed: '+resp.status, true);
+  }
+}
+
+// ── SAVE STEP DATE ──────────────────────────────────────────────
+async function saveStepDate(jobId, stepName, newDate, inputEl){
+  const base=SUPABASE_URL.trim().replace(/\/$/, '');
+  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+               'Content-Type':'application/json','Prefer':'return=minimal'};
+
+  // Find step_id (step_number) for this step name
+  const stepNum=stepOrder[stepName];
+  if(!stepNum){ showToast('Unknown step: '+stepName, true); return; }
+
+  if(inputEl) inputEl.style.opacity='.5';
+
+  if(newDate){
+    // Upsert into step_dates
+    const resp=await fetch(base+'/rest/v1/step_dates', {
+      method:'POST', headers:{...hdrs, 'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({job_id:jobId, step_id:stepNum, event_date:newDate, source:'calendar',
+                           updated_at:new Date().toISOString()})
+    });
+    if(resp.ok){
+      const proj=allProjects.find(p=>p.gid===jobId);
+      if(proj) { proj.dates[stepName]=newDate; if(!proj.sources.includes('calendar')) proj.sources.push('calendar'); }
+      if(inputEl){ inputEl.style.opacity=''; inputEl.classList.add('has-val'); }
+      showToast('Date saved');
+    } else {
+      if(inputEl) inputEl.style.opacity='';
+      showToast('Save failed: '+resp.status, true);
+    }
+  }
+}
+
+// ── CLEAR STEP DATE ─────────────────────────────────────────────
+async function clearStepDate(jobId, stepName, clearBtn){
+  if(!confirm('Clear the '+stepName+' date for this project?')) return;
+  const stepNum=stepOrder[stepName];
+  if(!stepNum) return;
+  const base=SUPABASE_URL.trim().replace(/\/$/, '');
+  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
+  const resp=await fetch(base+'/rest/v1/step_dates?job_id=eq.'+jobId+'&step_id=eq.'+stepNum, {
+    method:'DELETE', headers:hdrs
+  });
+  if(resp.ok){
+    const proj=allProjects.find(p=>p.gid===jobId);
+    if(proj) proj.dates[stepName]=null;
+    // Remove clear button and clear the input
+    const cell=clearBtn.closest('td');
+    const inp=cell.querySelector('input[type=date]');
+    if(inp){ inp.value=''; inp.classList.remove('has-val'); }
+    clearBtn.remove();
+    showToast('Date cleared');
+  } else {
+    showToast('Delete failed: '+resp.status, true);
+  }
+}
+
+// ── DELETE JOB ──────────────────────────────────────────────────
+async function deleteJob(jobId, jobName){
+  if(!confirm('Archive "'+jobName+'"?\n\nThis marks the job as archived and removes it from the tracker. Step dates are kept.')) return;
+  const base=SUPABASE_URL.trim().replace(/\/$/, '');
+  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,
+               'Content-Type':'application/json','Prefer':'return=minimal'};
+  const resp=await fetch(base+'/rest/v1/jobs?id=eq.'+jobId, {
+    method:'PATCH', headers:hdrs, body:JSON.stringify({status:'archived'})
+  });
+  if(resp.ok){
+    allProjects=allProjects.filter(p=>p.gid!==jobId);
+    renderTable();
+    renderStats();
+    showToast('Archived: '+jobName);
+  } else {
+    showToast('Delete failed: '+resp.status, true);
+  }
+}
+
+// ── TOAST NOTIFICATION ──────────────────────────────────────────
+function showToast(msg, isErr=false){
+  let t=document.getElementById('toast');
+  if(!t){
+    t=document.createElement('div');
+    t.id='toast';
+    t.style.cssText='position:fixed;bottom:24px;right:24px;padding:8px 16px;border-radius:6px;font-size:12px;font-family:DM Sans,sans-serif;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;
+  t.style.background=isErr?'#991B1B':'#1C3A2E';
+  t.style.color='#F5EDD8';
+  t.style.opacity='1';
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.style.opacity='0', 2500);
 }
 
 // ── TIMING TAB ─────────────────────────────────────────────────
