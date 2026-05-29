@@ -247,7 +247,7 @@ async function loadData() {
 
     const [stepsResp, jobsResp, datesResp] = await Promise.all([
       fetch(base + '/rest/v1/steps?select=id,step_number,step_name&order=step_number.asc', {headers: hdrs}),
-      fetch(base + '/rest/v1/jobs?select=id,address,job_type,status&order=created_at.desc', {headers: hdrs}),
+      fetch(base + '/rest/v1/jobs?select=id,address,job_type,status&status=eq.active&order=created_at.desc', {headers: hdrs}),
       fetch(base + '/rest/v1/step_dates?select=job_id,step_id,event_date,source', {headers: hdrs}),
     ]);
 
@@ -495,8 +495,7 @@ function toggleEditMode(){
   editMode=!editMode;
   document.getElementById('editToggle').classList.toggle('on',editMode);
   document.getElementById('editModeBar').classList.toggle('show',editMode);
-  if(!editMode) loadData(); // refresh after edits done
-  else renderTable();
+  renderTable(); // re-render in/out of edit mode without wiping in-memory state
 }
 
 // ── SAVE JOB NAME ───────────────────────────────────────────────
