@@ -352,9 +352,41 @@ async function loadData() {
         min:n?entries[0].days:0,max:n?entries[n-1].days:0,
         has_data:n>=1,need:Math.max(0,1-n)};
     }
+    // Design Phase: step 5 (Internal Ideas) → step 18 (Closing)
+    // Fallback: if no step 5 date, use step 6 (On-Site Visit) as start
+    // If neither step 5 nor step 6 exists, skip the job entirely
+    function designPhase() {
+      const step5  = steps.find(s=>s.step_number===5);
+      const step6  = steps.find(s=>s.step_number===6);
+      const step18 = steps.find(s=>s.step_number===18);
+      if (!step18) return null;
+      const entries = [];
+      for (const job of jobs) {
+        const jd  = dateLookup[job.id]||{};
+        const td  = jd[18]; // closing date
+        if (!td) continue;
+        // Try step 5 first, fall back to step 6
+        const fd  = jd[5] || jd[6];
+        if (!fd) continue;
+        const diff = Math.round((new Date(td.date)-new Date(fd.date))/86400000);
+        if (diff<0) continue;
+        const jName = (job.address||'')+(job.job_type?' - '+job.job_type:'');
+        // Note which start step was used
+        const startName = jd[5] ? step5?.step_name : step6?.step_name;
+        entries.push({name:jName, days:diff, startNote: jd[5] ? null : '(from On-Site Visit)'});
+      }
+      entries.sort((a,b)=>a.days-b.days);
+      const n=entries.length;
+      const avg=n?Math.round(entries.reduce((s,e)=>s+e.days,0)/n):0;
+      const fromLabel = step5?.step_name + ' (or On-Site Visit)';
+      return {label:'Design Phase',color:'#B8962E',from:fromLabel,to:step18?.step_name,
+        n,entries,avg,min:n?entries[0].days:0,max:n?entries[n-1].days:0,
+        has_data:n>=1,need:Math.max(0,1-n)};
+    }
+
     phaseData = [
       phaseRange(1, 4, 'Budget Phase',  '#2D5A41'),
-      phaseRange(5, 18,'Design Phase',  '#B8962E'),
+      designPhase(),
     ].filter(Boolean);
 
     // Update timestamp
