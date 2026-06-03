@@ -82,7 +82,7 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 .dash{width:18px;height:2px;background:var(--border);margin:0 auto;border-radius:2px;}
 .empty{padding:60px 24px;text-align:center;color:var(--gray);font-size:13px;font-style:italic;}
 .err-msg{padding:40px 24px;text-align:center;color:var(--red);font-size:13px;}
-#panel-timing{flex:1;overflow:auto;padding:28px 32px;display:none;}
+#panel-timing{flex:1;overflow:auto;padding:28px 32px;}
 #panel-timing.show{display:block;}
 .timing-header{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--g-dark);margin-bottom:6px;}
 .timing-sub{font-size:12px;color:var(--gray);margin-bottom:24px;font-style:italic;}
@@ -203,8 +203,8 @@ td.dcell.editing .dash{display:none;}
     <button onclick="toggleEditMode()" style="margin-left:auto;background:none;border:1px solid #92400E;color:#92400E;border-radius:4px;padding:3px 10px;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;">Done editing</button>
   </div>
   <div id="tabs">
-    <div class="tab on" onclick="switchTab('table',this)">Projects</div>
-    <div class="tab" onclick="switchTab('timing',this)">Step Timing</div>
+    <div class="tab" onclick="switchTab('table',this)">Projects</div>
+    <div class="tab on" onclick="switchTab('timing',this)">Step Timing</div>
   </div>
   <div id="filter-bar"></div>
   <div id="panel-table"><div class="tbl-wrap"><div id="tbl"></div></div></div>
@@ -291,11 +291,12 @@ async function loadData() {
       const lastStep = steps.filter(s => jDates[Number(s.step_number)]).sort((a,b) => b.step_number - a.step_number)[0];
       let phase = null;
       if (lastStep) {
-        if (lastStep.step_number >= 15) phase = 'CLOSING';
-        else if (lastStep.step_number >= 9)  phase = 'DESIGN';
-        else if (lastStep.step_number >= 5)  phase = 'CONCEPTS';
-        else if (lastStep.step_number >= 3)  phase = 'BUDGETING';
-        else phase = 'PROSPECT';
+        // Budgeting: steps 1-4 (HA through Budget Appointment)
+        // Design: steps 5-16 (Internal Ideas through Client Design Presentation)
+        // Closed: steps 17-18 (Pre-Closing and beyond)
+        if (lastStep.step_number >= 17)      phase = 'Closed';
+        else if (lastStep.step_number >= 5)  phase = 'Design';
+        else if (lastStep.step_number >= 1)  phase = 'Budgeting';
       }
       return { name, gid: job.id, phase, dates, sources: [...sources] };
     });
@@ -324,8 +325,8 @@ async function loadData() {
         n, entries, avg,
         min: n ? entries[0].days : 0,
         max: n ? entries[n-1].days : 0,
-        has_data: n >= 2,
-        need: Math.max(0, 2-n),
+        has_data: n >= 1,
+        need: Math.max(0, 1-n),
       });
     }
 
@@ -349,7 +350,7 @@ async function loadData() {
       const avg=n?Math.round(entries.reduce((s,e)=>s+e.days,0)/n):0;
       return {label,color,from:fs.step_name,to:ts.step_name,n,entries,avg,
         min:n?entries[0].days:0,max:n?entries[n-1].days:0,
-        has_data:n>=2,need:Math.max(0,2-n)};
+        has_data:n>=1,need:Math.max(0,1-n)};
     }
     phaseData = [
       phaseRange(1, 4, 'Budget Phase',  '#2D5A41'),
@@ -414,13 +415,12 @@ function dv()   { return `<div class="stat-div"></div>`; }
 // ── FILTER BAR ─────────────────────────────────────────────────
 function renderFilters(){
   const fb=document.getElementById('filter-bar');
-  const phases=['ALL',...[...new Set(allProjects.map(p=>p.phase||'—'))].sort()];
-  fb.innerHTML=phases.map(p=>
-    `<div class="pill${p===activeFilter?' on':''}" onclick="setFilter('${p}')">${p}</div>`
-  ).join('')
-  +`<input class="search" id="si" placeholder="Search projects…" oninput="renderTable()">`;
+  const options=['ALL','Budgeting','Design','Closed'];
+  fb.innerHTML=options.map(p=>
+    `<div class="pill${p===activeFilter?' on':''}" onclick="setFilter('${p}')">${p==='ALL'?'All':p}</div>`
+  ).join('');
 }
-function setFilter(p){ activeFilter=p; renderFilters(); renderTable(); }
+function setFilter(p){ activeFilter=p; renderFilters(); renderTable(); renderTiming(); }
 
 // ── TABLE ──────────────────────────────────────────────────────
 function renderTable(){
@@ -637,7 +637,7 @@ function renderTiming(){
   const maxAvg=hasData.length?Math.max(...hasData.map(r=>r.avg)):1;
 
   let html=`<div class="timing-header">Step Timing Breakdown</div>
-<div class="timing-sub">Average calendar days between stages — ${allProjects.length} projects · minimum 2 entries required · click any card to see individual jobs</div>
+<div class="timing-sub">Average calendar days between stages — ${allProjects.length} projects · click any card to see individual jobs</div>
 <div class="phase-row">`;
 
   phaseData.forEach((ph,i)=>{
@@ -654,7 +654,7 @@ function renderTiming(){
   <div class="ph-sum-label">${ph.label}</div>
   <div class="ph-sum-range">${ph.from} → ${ph.to}</div>
   <div class="ph-sum-avg" style="font-size:22px;color:var(--gray)">—</div>
-  <div class="t-need" style="margin-top:8px">Need <strong>${ph.need} more</strong> entr${ph.need===1?'y':'ies'}<br><small style="color:var(--gray)">${ph.n} of 2 recorded so far</small></div>
+  <div class="t-need" style="margin-top:8px">No data yet<br><small style="color:var(--gray)">No projects span this full phase</small></div>
 </div>`;
     }
   });
@@ -675,8 +675,8 @@ function renderTiming(){
       html+=`<div class="t-card no-data">
   <div class="t-arrow">${r.from} → ${r.to}</div>
   <div class="t-avg" style="font-size:20px;color:var(--gray)">—</div>
-  <div class="t-need">Need <strong>${r.need} more</strong> entr${r.need===1?'y':'ies'} to calculate</div>
-  <div class="t-n">${2-r.need} of 2 needed · ${r.n===0?'no data yet':'1 entry recorded'}</div>
+  <div class="t-need">No data yet</div>
+  <div class="t-n">No projects have completed both steps</div>
 </div>`;
     }
   });
@@ -724,7 +724,8 @@ document.addEventListener('keydown',e=>{
 
 // ── INIT ───────────────────────────────────────────────────────
 document.getElementById('filter-bar').style.display='flex';
-document.getElementById('panel-table').style.display='flex';
+document.getElementById('panel-table').style.display='none';
+document.getElementById('panel-timing').classList.add('show');
 
 loadData();
 // Auto-refresh every 5 minutes
