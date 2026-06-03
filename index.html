@@ -82,7 +82,7 @@ td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid
 .dash{width:18px;height:2px;background:var(--border);margin:0 auto;border-radius:2px;}
 .empty{padding:60px 24px;text-align:center;color:var(--gray);font-size:13px;font-style:italic;}
 .err-msg{padding:40px 24px;text-align:center;color:var(--red);font-size:13px;}
-#panel-timing{flex:1;overflow:auto;padding:28px 32px;}
+#panel-timing{flex:1;overflow:auto;padding:28px 32px;display:none;}
 #panel-timing.show{display:block;}
 .timing-header{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--g-dark);margin-bottom:6px;}
 .timing-sub{font-size:12px;color:var(--gray);margin-bottom:24px;font-style:italic;}
@@ -627,8 +627,10 @@ function switchTab(tab,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   el.classList.add('on');
   document.getElementById('filter-bar').style.display  = tab==='table'?'flex':'none';
-  document.getElementById('panel-table').style.display = tab==='table'?'flex':'none';
-  document.getElementById('panel-timing').classList.toggle('show',tab==='timing');
+  const tableEl  = document.getElementById('panel-table');
+  const timingEl = document.getElementById('panel-timing');
+  tableEl.style.display = tab==='table' ? 'flex' : 'none';
+  timingEl.classList.toggle('show', tab==='timing');
 }
 
 function renderTiming(){
