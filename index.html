@@ -600,7 +600,7 @@ async function saveStepDate(jobId, stepName, newDate, inputEl){
 
   // Find step_id (step_number) for this step name
   const stepNum=stepOrder[stepName];
-  if(!stepNum){ showToast('Unknown step: '+stepName, true); return; }
+  if(stepNum === undefined || stepNum === null){ showToast('Unknown step: '+stepName, true); return; }
 
   if(inputEl) inputEl.style.opacity='.5';
 
