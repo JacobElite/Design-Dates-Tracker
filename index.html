@@ -263,7 +263,6 @@ async function loadData() {
     // Build step lookup maps
     const stepById   = Object.fromEntries(steps.map(s => [s.id, s]));
     stepOrder        = Object.fromEntries(steps.map(s => [s.step_name, s.step_number]));
-    console.log('Steps from DB:', steps.map(s => `[${s.step_number}] "${s.step_name}"`).join(', '));
 
     // Build date lookup: {job_id: {step_id: {date, source}}}
     // Coerce step_id to Number to avoid string/int mismatch
@@ -498,12 +497,7 @@ function renderTable(){
     'Pre-Closing Internal Meeting',
     'Closing Client Meeting',
   ];
-  const colKeys = [...new Set(Object.keys(stepOrder))];
-  console.log('Col key indexOf Retainer Signed:', NAME_ORDER.indexOf('Retainer Signed'),
-    '| key exists in stepOrder:', 'Retainer Signed' in stepOrder,
-    '| stepOrder value:', stepOrder['Retainer Signed'],
-    '| NAME_ORDER[5]:', NAME_ORDER[5]);
-  const cols = colKeys.sort((a,b)=>{
+  const cols = [...new Set(Object.keys(stepOrder))].sort((a,b)=>{
     const posA = NAME_ORDER.indexOf(a);
     const posB = NAME_ORDER.indexOf(b);
     if(posA===-1&&posB===-1) return (stepOrder[a]||0)-(stepOrder[b]||0);
@@ -511,7 +505,6 @@ function renderTable(){
     if(posB===-1) return -1;
     return posA-posB;
   });
-  console.log('Final col order:', cols.join(' | '));
 
   let html=`<table><thead><tr>
     <th><div class="th-inner">Project</div></th>
