@@ -59,22 +59,22 @@ header{background:var(--g-dark);color:#F5EDD8;padding:14px 24px;display:flex;ali
 table{border-collapse:collapse;width:max-content;min-width:100%;}
 thead{position:sticky;top:0;z-index:10;}
 thead th{background:var(--g-dark);padding:0;border-right:1px solid rgba(255,255,255,.07);}
-thead th .th-inner{padding:10px 8px 9px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:rgba(245,237,216,.6);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
-thead th:first-child{position:sticky;left:0;z-index:11;border-right:2px solid rgba(255,255,255,.12);}
-thead th:first-child .th-inner{text-align:left;padding-left:24px;min-width:220px;max-width:220px;}
+thead th .th-inner{padding:10px 8px 9px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:rgba(245,237,216,.6);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
+thead th:first-child{position:sticky;left:0;z-index:11;border-right:2px solid rgba(255,255,255,.12);background:var(--surface);}
+thead th:first-child .th-inner{text-align:left;padding-left:24px;min-width:240px;max-width:240px;}
 tbody tr{border-bottom:1px solid var(--border);}
 tbody tr:hover td{background:var(--warm) !important;}
 tbody tr:nth-child(even) td{background:rgba(240,234,224,.45);}
 tbody tr:nth-child(even):hover td{background:var(--warm) !important;}
 tbody td{background:var(--cream);}
-td.pname{position:sticky;left:0;z-index:5;padding:10px 14px 10px 24px;min-width:220px;max-width:220px;border-right:2px solid var(--border);}
+td.pname{position:sticky;left:0;z-index:5;padding:10px 14px 10px 24px;min-width:240px;max-width:240px;border-right:2px solid var(--border);background:var(--surface);}
 .pn-text{font-size:13px;font-weight:500;color:var(--char);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .src-badges{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
 .src-badge{font-size:8px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;padding:1px 5px;border-radius:2px;}
 .src-badge.calendar{background:#E8F2EC;color:var(--g-mid);}
 .src-badge.teamup{background:#EDE9FE;color:var(--purple);}
 .src-badge.asana{background:#FEF3C7;color:#92400E;}
-td.dcell{padding:8px 4px;text-align:center;min-width:90px;border-right:1px solid var(--border);vertical-align:middle;}
+td.dcell{padding:8px 6px;text-align:center;min-width:120px;border-right:1px solid var(--border);vertical-align:middle;}
 .chip{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums;}
 .chip.past{background:#E8F2EC;color:var(--g-mid);border:1px solid #C2DEC9;}
 .chip.fut{background:#FBF3E0;color:var(--amber);border:1px solid #E8D5A0;}
@@ -292,11 +292,12 @@ async function loadData() {
       let phase = null;
       if (lastStep) {
         // Budgeting: steps 1-4 (HA through Budget Appointment)
-        // Design: steps 5-16 (Internal Ideas through Client Design Presentation)
+        // Design: steps 5-16 plus Retainer Signed (41)
         // Closed: steps 17-18 (Pre-Closing and beyond)
-        if (lastStep.step_number >= 17)      phase = 'Closed';
-        else if (lastStep.step_number >= 5)  phase = 'Design';
-        else if (lastStep.step_number >= 1)  phase = 'Budgeting';
+        if (lastStep.step_number >= 17)            phase = 'Closed';
+        else if (lastStep.step_number >= 5
+              || lastStep.step_number === 41)       phase = 'Design';
+        else if (lastStep.step_number >= 1)        phase = 'Budgeting';
       }
       return { name, gid: job.id, phase, dates, sources: [...sources] };
     });
@@ -352,33 +353,35 @@ async function loadData() {
         min:n?entries[0].days:0,max:n?entries[n-1].days:0,
         has_data:n>=1,need:Math.max(0,1-n)};
     }
-    // Design Phase: step 5 (Internal Ideas) → step 18 (Closing)
-    // Fallback: if no step 5 date, use step 6 (On-Site Visit) as start
-    // If neither step 5 nor step 6 exists, skip the job entirely
+    // Design Phase: start = Retainer Signed (41) → Closing (18)
+    // Fallback order: Retainer Signed → Internal Ideas (5) → On-Site Visit (6)
+    // Skip if no closing date or none of the three start options exist
     function designPhase() {
-      const step5  = steps.find(s=>s.step_number===5);
-      const step6  = steps.find(s=>s.step_number===6);
-      const step18 = steps.find(s=>s.step_number===18);
+      const stepRetainer = steps.find(s=>s.step_number===41);
+      const step5        = steps.find(s=>s.step_number===5);
+      const step6        = steps.find(s=>s.step_number===6);
+      const step18       = steps.find(s=>s.step_number===18);
       if (!step18) return null;
       const entries = [];
       for (const job of jobs) {
-        const jd  = dateLookup[job.id]||{};
-        const td  = jd[18]; // closing date
+        const jd = dateLookup[job.id]||{};
+        const td = jd[18]; // closing date
         if (!td) continue;
-        // Try step 5 first, fall back to step 6
-        const fd  = jd[5] || jd[6];
+        // Priority: Retainer Signed → Internal Ideas → On-Site Visit
+        const fd = jd[41] || jd[5] || jd[6];
         if (!fd) continue;
         const diff = Math.round((new Date(td.date)-new Date(fd.date))/86400000);
         if (diff<0) continue;
         const jName = (job.address||'')+(job.job_type?' - '+job.job_type:'');
-        // Note which start step was used
-        const startName = jd[5] ? step5?.step_name : step6?.step_name;
-        entries.push({name:jName, days:diff, startNote: jd[5] ? null : '(from On-Site Visit)'});
+        const startLabel = jd[41] ? 'from Retainer Signed'
+                         : jd[5]  ? null
+                         :           'from On-Site Visit';
+        entries.push({name:jName, days:diff, startNote: startLabel});
       }
       entries.sort((a,b)=>a.days-b.days);
       const n=entries.length;
       const avg=n?Math.round(entries.reduce((s,e)=>s+e.days,0)/n):0;
-      const fromLabel = step5?.step_name + ' (or On-Site Visit)';
+      const fromLabel = 'Retainer Signed (or Internal Ideas / On-Site Visit)';
       return {label:'Design Phase',color:'#B8962E',from:fromLabel,to:step18?.step_name,
         n,entries,avg,min:n?entries[0].days:0,max:n?entries[n-1].days:0,
         has_data:n>=1,need:Math.max(0,1-n)};
@@ -471,7 +474,17 @@ function renderTable(){
     return;
   }
 
-  const cols=[...new Set(Object.keys(stepOrder))].sort((a,b)=>(stepOrder[a]||0)-(stepOrder[b]||0));
+  // Custom column display order — 0=First Contact, then 1-4, then 41=Retainer Signed, then 5-18
+  const DISPLAY_ORDER = [0,1,2,3,4,41,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
+  const knownSteps = new Set(Object.values(stepOrder));
+  const cols = [...new Set(Object.keys(stepOrder))].sort((a,b)=>{
+    const posA = DISPLAY_ORDER.indexOf(stepOrder[a]??-1);
+    const posB = DISPLAY_ORDER.indexOf(stepOrder[b]??-1);
+    if(posA===-1&&posB===-1) return (stepOrder[a]||0)-(stepOrder[b]||0);
+    if(posA===-1) return 1;
+    if(posB===-1) return -1;
+    return posA-posB;
+  });
 
   let html=`<table><thead><tr>
     <th><div class="th-inner">Project</div></th>
