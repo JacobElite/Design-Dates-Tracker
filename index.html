@@ -263,6 +263,7 @@ async function loadData() {
     // Build step lookup maps
     const stepById   = Object.fromEntries(steps.map(s => [s.id, s]));
     stepOrder        = Object.fromEntries(steps.map(s => [s.step_name, s.step_number]));
+    console.log('Steps from DB:', steps.map(s => `[${s.step_number}] "${s.step_name}"`).join(', '));
 
     // Build date lookup: {job_id: {step_id: {date, source}}}
     // Coerce step_id to Number to avoid string/int mismatch
@@ -474,12 +475,32 @@ function renderTable(){
     return;
   }
 
-  // Custom column display order — 0=First Contact, then 1-4, then 41=Retainer Signed, then 5-18
-  const DISPLAY_ORDER = [0,1,2,3,4,41,5,6,7,8,9,10,11,12,13,14,15,16,17,18];
-  const knownSteps = new Set(Object.values(stepOrder));
+  // Explicit column order by name — avoids type coercion issues with step_number
+  const NAME_ORDER = [
+    'First Contact',
+    'Home Consultation',
+    'Creative Review',
+    'Pre-Budget Meeting',
+    'Budget Appointment',
+    'Retainer Signed',          // between Budget Appointment and Internal Ideas Session
+    'Internal Ideas Session',
+    'On-Site Visit',
+    'Appliance Meeting',
+    'Concept Development',
+    'Concept Client Meeting',
+    'Design Development',
+    'Cabinetry Meeting',
+    'Material Client Meeting',
+    'Blue Tape',
+    'Create Detailed Design Package',
+    'Internal Team Handoff',
+    'Client Design Presentation',
+    'Pre-Closing Internal Meeting',
+    'Closing Client Meeting',
+  ];
   const cols = [...new Set(Object.keys(stepOrder))].sort((a,b)=>{
-    const posA = DISPLAY_ORDER.indexOf(stepOrder[a]??-1);
-    const posB = DISPLAY_ORDER.indexOf(stepOrder[b]??-1);
+    const posA = NAME_ORDER.indexOf(a);
+    const posB = NAME_ORDER.indexOf(b);
     if(posA===-1&&posB===-1) return (stepOrder[a]||0)-(stepOrder[b]||0);
     if(posA===-1) return 1;
     if(posB===-1) return -1;
