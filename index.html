@@ -822,8 +822,32 @@ document.getElementById('panel-table').style.display='none';
 document.getElementById('panel-timing').classList.add('show');
 
 loadData();
-// Auto-refresh every 5 minutes
-autoTimer = setInterval(loadData, 5 * 60 * 1000);
+
+// Egress optimization: the tracker is a reporting view, not a live tool —
+// design dates change infrequently, so a 5-min auto-refresh was pulling the
+// full step_dates table 96x/day per open tab for almost no benefit.
+// Instead: refresh only when the user returns to the tab after 10+ min away,
+// plus the manual Refresh button. Cuts tracker egress ~95%.
+let lastLoadedAt = Date.now();
+const STALE_MS = 10 * 60 * 1000; // 10 minutes
+
+// Wrap loadData to stamp the last-load time
+const _origLoadData = loadData;
+loadData = async function() {
+  const r = await _origLoadData.apply(this, arguments);
+  lastLoadedAt = Date.now();
+  return r;
+};
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    const stale = Date.now() - lastLoadedAt;
+    if (stale >= STALE_MS) {
+      console.log('Tracker: tab refocused after ' + Math.round(stale/60000) + ' min — refreshing');
+      loadData();
+    }
+  }
+});
 </script>
 </body>
 </html>
