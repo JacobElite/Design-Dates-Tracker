@@ -770,18 +770,18 @@ function renderTiming(){
 <div class="chart-grid">
   <div class="chart-card wide">
     <div class="chart-title">Average Days per Step</div>
-    <div class="chart-sub">Dark bar = average · light band = fastest to slowest · click a bar for the job list</div>
+    <div class="chart-sub">Click a bar for the job list</div>
     <div class="chart-box" id="chartStepsBox"><canvas id="chartSteps"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title">Phase Length Over Time</div>
-    <div class="chart-sub">Average days, grouped by the month each phase ended</div>
-    <div class="chart-box"><canvas id="chartTrend"></canvas></div>
+    <div class="chart-title">Budget Phase Length Over Time</div>
+    <div class="chart-sub">Average days, grouped by the month the phase ended</div>
+    <div class="chart-box"><canvas id="chartBudgetTrend"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title">Pipeline Reach</div>
-    <div class="chart-sub">Active projects with a date on each step</div>
-    <div class="chart-box"><canvas id="chartFunnel"></canvas></div>
+    <div class="chart-title">Design Phase Length Over Time</div>
+    <div class="chart-sub">Average days, grouped by the month the phase ended</div>
+    <div class="chart-box"><canvas id="chartDesignTrend"></canvas></div>
   </div>
 </div>
 <div class="timing-divider"><span>Step by Step</span></div><div class="timing-grid">`;
@@ -822,14 +822,14 @@ function _chartEmpty(canvasId, msg){
 
 function renderCharts(){
   if(typeof Chart === 'undefined'){
-    ['chartSteps','chartTrend','chartFunnel'].forEach(id=>_chartEmpty(id,'Charts could not load (Chart.js unavailable).'));
+    ['chartSteps','chartBudgetTrend','chartDesignTrend'].forEach(id=>_chartEmpty(id,'Charts could not load (Chart.js unavailable).'));
     return;
   }
   Chart.defaults.font.family = "'DM Sans', sans-serif";
   Chart.defaults.font.size   = 11;
   Chart.defaults.color       = '#8A8578';
 
-  // ── 1. Average days per step (horizontal, with min–max band) ──
+  // ── 1. Average days per step (horizontal bars) ──
   _destroyChart('steps');
   const stepRows = timingData.map((r,i)=>({r,i})).filter(x=>x.r.has_data);
   if(!stepRows.length){ _chartEmpty('chartSteps','No step transitions with data yet.'); }
@@ -840,12 +840,8 @@ function renderCharts(){
       type: 'bar',
       data: {
         labels: stepRows.map(x=>'→ ' + x.r.to),
-        datasets: [
-          { label:'Range', data: stepRows.map(x=>[x.r.min, x.r.max]),
-            backgroundColor:'rgba(74,122,94,.18)', borderRadius:3, grouped:false, order:2, barPercentage:.8 },
-          { label:'Average', data: stepRows.map(x=>x.r.avg),
-            backgroundColor:'#2D5A41', borderRadius:3, grouped:false, order:1, barPercentage:.45 },
-        ],
+        datasets: [{ label:'Average', data: stepRows.map(x=>x.r.avg),
+          backgroundColor:'#2D5A41', borderRadius:3, barPercentage:.6 }],
       },
       options: {
         indexAxis:'y', maintainAspectRatio:false,
@@ -857,12 +853,8 @@ function renderCharts(){
           legend: { display:false },
           tooltip: { callbacks: {
             title: items => { const r=stepRows[items[0].dataIndex].r; return `${r.from} → ${r.to}`; },
-            label: item => {
-              const r = stepRows[item.dataIndex].r;
-              return item.dataset.label==='Average'
-                ? `Average: ${r.avg} days (${r.n} project${r.n===1?'':'s'})`
-                : `Range: ${r.min}–${r.max} days`;
-            },
+            label: item => { const r=stepRows[item.dataIndex].r;
+              return `Average: ${r.avg} days (${r.n} project${r.n===1?'':'s'})`; },
           }},
         },
         onClick: (evt, els) => { if(els.length) openModal(timingData[stepRows[els[0].index].i]); },
@@ -871,77 +863,42 @@ function renderCharts(){
     });
   }
 
-  // ── 2. Phase length over time (line, by month the phase ended) ──
-  _destroyChart('trend');
-  const byMonth = ph => {
-    const m = {};
-    (ph?.entries||[]).forEach(e=>{ if(!e.end) return; const k=e.end.substring(0,7); (m[k]=m[k]||[]).push(e.days); });
-    return m;
-  };
-  const budget = phaseData.find(p=>p.label==='Budget Phase');
-  const design = phaseData.find(p=>p.label==='Design Phase');
-  const bM = byMonth(budget), dM = byMonth(design);
-  const months = [...new Set([...Object.keys(bM), ...Object.keys(dM)])].sort();
-  if(!months.length){ _chartEmpty('chartTrend','Not enough completed phases yet.'); }
-  else {
-    const avgOf = arr => arr ? Math.round(arr.reduce((s,v)=>s+v,0)/arr.length) : null;
-    const monthLabel = k => new Date(k+'-15T12:00:00').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
-    const series = (M, color, label) => ({
-      label, data: months.map(k=>avgOf(M[k])), counts: months.map(k=>(M[k]||[]).length),
-      borderColor:color, backgroundColor:color, tension:.3, spanGaps:true, pointRadius:4, pointHoverRadius:6,
-    });
-    _charts.trend = new Chart(document.getElementById('chartTrend'), {
-      type: 'line',
-      data: { labels: months.map(monthLabel), datasets: [
-        series(bM, '#2D5A41', 'Budget Phase'),
-        series(dM, '#B8962E', 'Design Phase'),
-      ]},
-      options: {
-        maintainAspectRatio:false,
-        scales: {
-          y: { beginAtZero:true, title:{display:true,text:'Avg days'}, grid:{color:'#EFEAE2'} },
-          x: { grid:{display:false} },
-        },
-        plugins: {
-          legend: { position:'bottom', labels:{boxWidth:10, usePointStyle:true} },
-          tooltip: { callbacks: { label: item => {
-            const n = item.dataset.counts[item.dataIndex];
-            return `${item.dataset.label}: ${item.formattedValue} days (${n} project${n===1?'':'s'})`;
-          }}},
-        },
-      },
-    });
-  }
+  // ── 2 & 3. Phase length over time — one chart per phase ──
+  renderPhaseTrend('budgetTrend', 'chartBudgetTrend', phaseData.find(p=>p.label==='Budget Phase'), '#2D5A41');
+  renderPhaseTrend('designTrend', 'chartDesignTrend', phaseData.find(p=>p.label==='Design Phase'), '#B8962E');
+}
 
-  // ── 3. Pipeline reach (how many projects have a date on each step) ──
-  _destroyChart('funnel');
-  const stepNames = Object.keys(stepOrder).sort((a,b)=>{
-    const pa=STEP_DISPLAY_ORDER.indexOf(a), pb=STEP_DISPLAY_ORDER.indexOf(b);
-    if(pa===-1&&pb===-1) return (stepOrder[a]||0)-(stepOrder[b]||0);
-    if(pa===-1) return 1; if(pb===-1) return -1; return pa-pb;
-  });
-  const counts = stepNames.map(s => allProjects.filter(p=>p.dates && p.dates[s]).length);
-  if(!counts.some(n=>n>0)){ _chartEmpty('chartFunnel','No step dates yet.'); }
-  else {
-    _charts.funnel = new Chart(document.getElementById('chartFunnel'), {
-      type: 'bar',
-      data: { labels: stepNames, datasets: [{
-        label:'Projects', data: counts, backgroundColor:'#4A7A5E', borderRadius:3,
-      }]},
-      options: {
-        maintainAspectRatio:false,
-        scales: {
-          y: { beginAtZero:true, ticks:{precision:0}, grid:{color:'#EFEAE2'} },
-          x: { grid:{display:false}, ticks:{ autoSkip:false, maxRotation:60, minRotation:45,
-               callback: function(v){ const l=this.getLabelForValue(v); return l.length>16 ? l.slice(0,15)+'…' : l; } } },
-        },
-        plugins: {
-          legend: { display:false },
-          tooltip: { callbacks: { label: item => `${item.formattedValue} project${item.raw===1?'':'s'}` } },
-        },
+// Line chart of a phase's average length, grouped by the month it ended.
+function renderPhaseTrend(key, canvasId, ph, color){
+  _destroyChart(key);
+  const M = {};
+  (ph?.entries||[]).forEach(e=>{ if(!e.end) return; const k=e.end.substring(0,7); (M[k]=M[k]||[]).push(e.days); });
+  const months = Object.keys(M).sort();
+  if(!months.length){ _chartEmpty(canvasId,'Not enough completed phases yet.'); return; }
+  const avgOf = arr => Math.round(arr.reduce((s,v)=>s+v,0)/arr.length);
+  const monthLabel = k => new Date(k+'-15T12:00:00').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+  const counts = months.map(k=>M[k].length);
+  _charts[key] = new Chart(document.getElementById(canvasId), {
+    type: 'line',
+    data: { labels: months.map(monthLabel), datasets: [{
+      label: ph.label, data: months.map(k=>avgOf(M[k])),
+      borderColor:color, backgroundColor:color, tension:.3, pointRadius:4, pointHoverRadius:6,
+    }]},
+    options: {
+      maintainAspectRatio:false,
+      scales: {
+        y: { beginAtZero:true, title:{display:true,text:'Avg days'}, grid:{color:'#EFEAE2'} },
+        x: { grid:{display:false} },
       },
-    });
-  }
+      plugins: {
+        legend: { display:false },
+        tooltip: { callbacks: { label: item => {
+          const n = counts[item.dataIndex];
+          return `${item.formattedValue} days avg (${n} project${n===1?'':'s'})`;
+        }}},
+      },
+    },
+  });
 }
 
 // ── MODAL ──────────────────────────────────────────────────────
@@ -968,8 +925,50 @@ function openModal(row){
 </div>`;
   });
   body+=`</div>`;
+  if(entries.length){
+    body+=`<div class="chart-title" style="font-size:16px;margin-top:20px">All Data Points</div>
+<div class="chart-sub">Each bar is one project · dashed line = average</div>
+<div class="chart-box" style="height:240px"><canvas id="modalChart"></canvas></div>`;
+  }
   document.getElementById('modal-body').innerHTML=body;
   document.getElementById('modal-overlay').classList.add('show');
+  renderModalChart(entries, avg);
+}
+
+// Bar per project (same order as the list above), above-average in amber,
+// with a dashed average line across.
+function renderModalChart(entries, avg){
+  _destroyChart('modal');
+  if(!entries.length || typeof Chart === 'undefined') return;
+  const many = entries.length > 15;
+  _charts.modal = new Chart(document.getElementById('modalChart'), {
+    type: 'bar',
+    data: {
+      labels: entries.map(e=>e.name),
+      datasets: [
+        { type:'line', label:'Average', data: entries.map(()=>avg),
+          borderColor:'#1C3A2E', borderDash:[5,4], borderWidth:1.5, pointRadius:0, pointHoverRadius:0, order:0 },
+        { type:'bar', label:'Days', data: entries.map(e=>e.days),
+          backgroundColor: entries.map(e=> e.days>avg ? '#8B6914' : '#4A7A5E'),
+          borderRadius:2, order:1, barPercentage:.8 },
+      ],
+    },
+    options: {
+      maintainAspectRatio:false,
+      scales: {
+        y: { beginAtZero:true, title:{display:true,text:'Days'}, grid:{color:'#EFEAE2'} },
+        x: { grid:{display:false}, ticks:{ display:!many, autoSkip:false, maxRotation:60, minRotation:45,
+             callback: function(v){ const l=this.getLabelForValue(v); return l.length>18 ? l.slice(0,17)+'…' : l; } } },
+      },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          filter: item => item.dataset.label==='Days',
+          callbacks: { label: item => `${item.raw} days  (avg ${avg})` },
+        },
+      },
+    },
+  });
 }
 
 function closeModal(e){
