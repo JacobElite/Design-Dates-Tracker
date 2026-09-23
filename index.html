@@ -2,267 +2,372 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Design Project Tracker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --cream:#FAF7F2;--warm:#F0EAE0;--g-dark:#1C3A2E;--g-mid:#2D5A41;--g-light:#4A7A5E;
-  --gold:#B8962E;--gold-l:#EDD9A3;--amber:#8B6914;--char:#1C2419;--gray:#8A8578;
-  --border:#DDD7CC;--red:#991B1B;--purple:#5B21B6;
-}
-html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--char);}
-#app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
-#overlay{position:fixed;inset:0;background:rgba(250,247,242,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;gap:14px;transition:opacity .3s;}
-#overlay.hidden{opacity:0;pointer-events:none;}
-.spinner{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--g-dark);border-radius:50%;animation:spin .7s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.ov-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-style:italic;color:var(--g-dark);}
-.ov-sub{font-size:11px;color:var(--gray);letter-spacing:.14em;text-transform:uppercase;}
-header{background:var(--g-dark);color:#F5EDD8;padding:14px 24px;display:flex;align-items:center;gap:18px;flex-shrink:0;}
-.h-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;letter-spacing:.04em;line-height:1;}
-.h-sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(245,237,216,.45);margin-top:3px;font-weight:300;}
-.spacer{flex:1;}
-.legend{display:flex;align-items:center;gap:14px;}
-.l-item{display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(245,237,216,.5);text-transform:uppercase;letter-spacing:.08em;}
-.l-dot{width:9px;height:9px;border-radius:2px;}
-.l-dot.past{background:#A3C9B0;}.l-dot.future{background:#E8D5A0;}.l-dot.empty{background:rgba(255,255,255,.15);}
-.ts-badge{display:flex;align-items:center;gap:7px;background:rgba(184,150,46,.12);border:1px solid rgba(184,150,46,.35);color:var(--gold-l);padding:6px 13px;border-radius:4px;font-size:11px;white-space:nowrap;}
-.ts-badge svg{width:12px;height:12px;opacity:.7;flex-shrink:0;}
-.refresh-btn{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:4px;border:1px solid rgba(245,237,216,.2);background:rgba(245,237,216,.08);color:rgba(245,237,216,.7);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.refresh-btn:hover{background:rgba(245,237,216,.15);color:#F5EDD8;}
-.refresh-btn:disabled{opacity:.5;cursor:wait;}
-.refresh-btn.spin svg{animation:spin .7s linear infinite;}
-#stats-bar{background:var(--g-dark);border-top:1px solid rgba(255,255,255,.06);padding:10px 24px;display:flex;align-items:center;gap:28px;flex-shrink:0;}
-.stat{display:flex;flex-direction:column;gap:1px;}
-.stat-val{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;color:var(--gold-l);line-height:1;}
-.stat-lbl{font-size:9px;color:rgba(245,237,216,.4);text-transform:uppercase;letter-spacing:.12em;}
-.stat-div{width:1px;height:32px;background:rgba(255,255,255,.1);}
-#tabs{background:var(--warm);border-bottom:1px solid var(--border);padding:0 24px;display:flex;flex-shrink:0;}
-.tab{padding:11px 20px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--gray);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;}
-.tab.on{color:var(--g-dark);border-bottom-color:var(--g-dark);}
-.tab:hover:not(.on){color:var(--g-mid);}
-#filter-bar{background:var(--warm);border-bottom:1px solid var(--border);padding:9px 24px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;}
-.pill{padding:4px 12px;border-radius:100px;font-size:10px;font-weight:500;cursor:pointer;border:1px solid var(--border);color:var(--gray);transition:all .15s;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
-.pill.on{background:var(--g-dark);color:white;border-color:var(--g-dark);}
-.pill:hover:not(.on){border-color:var(--g-mid);color:var(--g-mid);}
-.search{margin-left:auto;background:white;border:1px solid var(--border);border-radius:4px;padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--char);outline:none;width:190px;transition:border-color .2s;}
-.search:focus{border-color:var(--g-light);}
-.search::placeholder{color:var(--gray);}
-#panel-table{flex:1;overflow:hidden;display:flex;flex-direction:column;}
-.tbl-wrap{flex:1;overflow:auto;}
-table{border-collapse:collapse;width:max-content;min-width:100%;}
-thead{position:sticky;top:0;z-index:10;}
-thead th{background:var(--g-dark);padding:0;border-right:1px solid rgba(255,255,255,.07);}
-thead th .th-inner{padding:10px 8px 9px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:rgba(245,237,216,.6);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;}
-thead th:first-child{position:sticky;left:0;z-index:11;border-right:2px solid rgba(255,255,255,.12);background:var(--surface);}
-thead th:first-child .th-inner{text-align:left;padding-left:24px;min-width:240px;max-width:240px;}
-tbody tr{border-bottom:1px solid var(--border);}
-tbody tr:hover td{background:var(--warm) !important;}
-tbody tr:nth-child(even) td{background:rgba(240,234,224,.45);}
-tbody tr:nth-child(even):hover td{background:var(--warm) !important;}
-tbody td{background:var(--cream);}
-td.pname{position:sticky;left:0;z-index:5;padding:10px 14px 10px 24px;min-width:240px;max-width:240px;border-right:2px solid var(--border);background:var(--surface);}
-.pn-text{font-size:13px;font-weight:500;color:var(--char);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.src-badges{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
-.src-badge{font-size:8px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;padding:1px 5px;border-radius:2px;}
-.src-badge.calendar{background:#E8F2EC;color:var(--g-mid);}
-.src-badge.teamup{background:#EDE9FE;color:var(--purple);}
-.src-badge.asana{background:#FEF3C7;color:#92400E;}
-td.dcell{padding:8px 6px;text-align:center;min-width:120px;border-right:1px solid var(--border);vertical-align:middle;}
-.chip{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:500;white-space:nowrap;font-variant-numeric:tabular-nums;}
-.chip.past{background:#E8F2EC;color:var(--g-mid);border:1px solid #C2DEC9;}
-.chip.fut{background:#FBF3E0;color:var(--amber);border:1px solid #E8D5A0;}
-.chip.today{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;}
-.dash{width:18px;height:2px;background:var(--border);margin:0 auto;border-radius:2px;}
-.empty{padding:60px 24px;text-align:center;color:var(--gray);font-size:13px;font-style:italic;}
-.err-msg{padding:40px 24px;text-align:center;color:var(--red);font-size:13px;}
-#panel-timing{flex:1;overflow:auto;padding:28px 32px;display:none;}
-#panel-timing.show{display:block;}
-.timing-header{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--g-dark);margin-bottom:6px;}
-.timing-sub{font-size:12px;color:var(--gray);margin-bottom:24px;font-style:italic;}
-.phase-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-bottom:24px;}
-.ph-sum-card{background:white;border:1px solid var(--border);border-radius:10px;padding:20px 22px;border-top:4px solid var(--ph-color);cursor:pointer;transition:box-shadow .15s,transform .1s;}
-.ph-sum-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-1px);}
-.ph-sum-card.no-data{cursor:default;opacity:.7;}
-.ph-sum-card.no-data:hover{box-shadow:none;transform:none;}
-.ph-sum-label{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--g-dark);margin-bottom:3px;}
-.ph-sum-range{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.09em;margin-bottom:12px;}
-.ph-sum-avg{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:600;line-height:1;color:var(--ph-color);}
-.ph-sum-avg span{font-size:15px;font-weight:400;color:var(--gray);font-family:'DM Sans',sans-serif;}
-.ph-sum-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--gray);margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
-.ph-sum-meta strong{color:var(--char);}
-.click-hint{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--g-light);margin-top:8px;font-weight:500;}
-.timing-divider{display:flex;align-items:center;gap:14px;margin:4px 0 20px;color:var(--gray);}
-.timing-divider::before,.timing-divider::after{content:'';flex:1;height:1px;background:var(--border);}
-.timing-divider span{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:500;white-space:nowrap;}
-.timing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
-.t-card{background:white;border:1px solid var(--border);border-radius:8px;padding:16px 18px;position:relative;overflow:hidden;transition:box-shadow .15s,transform .1s;}
-.t-card.clickable{cursor:pointer;}
-.t-card.clickable:hover{box-shadow:0 4px 14px rgba(0,0,0,.07);transform:translateY(-1px);}
-.t-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--g-light);}
-.t-card.no-data::before{background:var(--border);}
-.t-arrow{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.09em;font-weight:500;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.t-avg{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;color:var(--g-dark);line-height:1.1;}
-.t-avg span{font-size:13px;font-weight:400;color:var(--gray);font-family:'DM Sans',sans-serif;}
-.t-need{font-size:12px;color:var(--gray);font-style:italic;margin-top:4px;}
-.t-need strong{color:var(--amber);}
-.t-bar-wrap{margin:10px 0 8px;background:var(--warm);height:5px;border-radius:3px;overflow:hidden;}
-.t-bar{height:100%;background:var(--g-light);border-radius:3px;}
-.t-meta{display:flex;justify-content:space-between;font-size:10px;color:var(--gray);}
-.t-meta strong{color:var(--char);}
-.t-hint{font-size:9px;color:var(--g-light);text-transform:uppercase;letter-spacing:.09em;margin-top:6px;font-weight:500;}
-.t-n{font-size:9px;color:var(--gray);margin-top:6px;text-transform:uppercase;letter-spacing:.08em;}
-#modal-overlay{position:fixed;inset:0;background:rgba(28,42,25,.45);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
-#modal-overlay.show{opacity:1;pointer-events:all;}
-#modal{background:var(--cream);border-radius:12px;width:min(560px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.2);transform:translateY(12px);transition:transform .2s;}
-#modal-overlay.show #modal{transform:translateY(0);}
-.modal-head{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:12px;}
-.modal-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--g-dark);line-height:1.2;}
-.modal-sub{font-size:11px;color:var(--gray);margin-top:3px;}
-.modal-close{margin-left:auto;background:none;border:none;cursor:pointer;color:var(--gray);padding:4px;font-size:20px;line-height:1;flex-shrink:0;}
-.modal-close:hover{color:var(--char);}
-.modal-body{overflow-y:auto;padding:16px 24px 24px;}
-.modal-avg-row{display:flex;gap:24px;margin-bottom:16px;padding:12px 14px;background:var(--warm);border-radius:6px;}
-.modal-stat{display:flex;flex-direction:column;gap:2px;}
-.modal-stat-val{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--g-dark);line-height:1;}
-.modal-stat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--gray);}
-.job-list{display:flex;flex-direction:column;gap:6px;}
-.job-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;background:white;border:1px solid var(--border);}
-.job-name{font-size:12px;font-weight:500;color:var(--char);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.job-days{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--g-dark);white-space:nowrap;}
-.job-days span{font-size:11px;font-weight:400;color:var(--gray);font-family:'DM Sans',sans-serif;}
-.job-bar-wrap{width:80px;height:4px;background:var(--warm);border-radius:2px;overflow:hidden;flex-shrink:0;}
-.job-bar{height:100%;border-radius:2px;background:var(--g-light);}
-.job-bar.above{background:var(--amber);}
+  :root {
+    --bg: #0a0c0f;
+    --surface: #12161c;
+    --surface2: #1a2030;
+    --border: rgba(255,255,255,0.07);
+    --text: #e8eaf0;
+    --muted: #5a6480;
+    --accent: #4f9cf9;
+  }
 
-/* ── CHARTS ── */
-.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;margin-bottom:24px;}
-.chart-card{background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
-.chart-card.wide{grid-column:1/-1;}
-.chart-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--g-dark);}
-.chart-sub{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.09em;margin:2px 0 12px;}
-.chart-box{position:relative;height:280px;}
-.chart-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--gray);font-size:12px;font-style:italic;}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* ── EDIT MODE ── */
-.edit-toggle{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:4px;border:1px solid rgba(245,237,216,.2);background:rgba(245,237,216,.08);color:rgba(245,237,216,.7);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
-.edit-toggle:hover{background:rgba(245,237,216,.15);color:#F5EDD8;}
-.edit-toggle.on{background:rgba(184,150,46,.2);border-color:rgba(184,150,46,.5);color:var(--gold-l);}
-.edit-mode-bar{display:none;background:#FEF3C7;border-bottom:2px solid var(--gold);padding:8px 24px;font-size:11px;color:#92400E;align-items:center;gap:10px;flex-shrink:0;}
-.edit-mode-bar.show{display:flex;}
-.edit-mode-bar strong{font-weight:600;}
-td.dcell.editing{padding:4px 3px;}
-td.dcell.editing .chip{display:none;}
-td.dcell.editing .dash{display:none;}
-.date-input-cell{width:86px;font-size:11px;padding:4px 5px;border:1px solid var(--border);border-radius:4px;font-family:'DM Sans',sans-serif;color:var(--char);background:white;cursor:pointer;}
-.date-input-cell:focus{outline:none;border-color:var(--g-light);}
-.date-input-cell.has-val{border-color:#C2DEC9;background:#F0FAF4;}
-.date-clear-btn{font-size:14px;line-height:1;background:none;border:none;cursor:pointer;color:var(--gray);padding:0 1px;vertical-align:middle;}
-.date-clear-btn:hover{color:var(--red);}
-.pname.editing{padding-right:8px;}
-.pname-input{width:100%;font-size:12px;font-weight:500;font-family:'DM Sans',sans-serif;border:1px solid var(--border);border-radius:4px;padding:3px 6px;color:var(--char);background:white;}
-.pname-input:focus{outline:none;border-color:var(--g-light);}
-.del-btn{background:none;border:none;cursor:pointer;color:rgba(153,27,27,.5);padding:0;font-size:14px;line-height:1;flex-shrink:0;transition:color .15s;}
-.del-btn:hover{color:var(--red);}
-.save-cell-btn{font-size:9px;text-transform:uppercase;letter-spacing:.07em;background:var(--g-dark);color:#F5EDD8;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;margin-top:2px;display:block;width:100%;}
-.save-cell-btn:hover{background:var(--g-mid);}
-.edit-saving{opacity:.5;pointer-events:none;}
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SETUP SCREEN ── */
+  #setup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: radial-gradient(ellipse at 50% 0%, #1a2a4a 0%, var(--bg) 70%);
+  }
+  #setup h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 4rem;
+    letter-spacing: 0.12em;
+    color: white;
+    margin-bottom: 6px;
+  }
+  #setup p.sub {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-bottom: 48px;
+    letter-spacing: 0.04em;
+  }
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 48px;
+    width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .setup-card label {
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .setup-card input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .setup-card input:focus { border-color: var(--accent); }
+  .setup-card input::placeholder { color: var(--muted); }
+  .btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 13px 24px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.88; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  #setup-error {
+    color: #f87272;
+    font-size: 0.83rem;
+    text-align: center;
+    min-height: 18px;
+  }
+  .help-link {
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 4px;
+  }
+  .help-link a { color: var(--accent); text-decoration: none; }
+
+  /* ── LOADING SCREEN ── */
+  #loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 20px;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { color: var(--muted); font-size: 0.9rem; letter-spacing: 0.06em; }
+
+  /* ── DASHBOARD ── */
+  #dashboard {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .dash-header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.3rem;
+    letter-spacing: 0.1em;
+    color: white;
+  }
+  .dash-meta {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+  }
+  .live-dot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .dot-indicator {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 8px #4ade80;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  #last-updated {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  #project-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.88rem;
+    color: var(--accent);
+    background: rgba(79,156,249,0.1);
+    padding: 5px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 2px;
+    flex: 1;
+    overflow: hidden;
+    background: var(--border);
+  }
+
+  .step-card {
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-top: 5px solid var(--step-color, var(--border));
+    padding: 18px 20px 22px;
+    transition: background 0.2s;
+  }
+  .step-card.has-projects {
+    background: var(--surface2);
+  }
+
+  .step-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-shrink: 0;
+    margin-bottom: 16px;
+  }
+  .step-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.3rem;
+    color: var(--step-color, var(--muted));
+    opacity: 0.9;
+    flex-shrink: 0;
+  }
+  .step-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    flex: 1;
+  }
+
+  .step-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    min-height: 0;
+  }
+  .step-body::-webkit-scrollbar { display: none; }
+
+  .dot-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    max-width: 100%;
+  }
+  .job-dot {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--step-color, var(--accent));
+    flex-shrink: 0;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+
+  .count-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--step-color, var(--accent));
+    line-height: 1;
+  }
+
+  .empty-state {
+    font-size: 1.1rem;
+    color: var(--muted);
+    opacity: 0.5;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Refresh bar ── */
+  #refresh-bar {
+    position: fixed;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--accent);
+    width: 100%;
+    transform-origin: left;
+    animation: shrink linear forwards;
+  }
+  @keyframes shrink {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+  }
+
+  /* ── Error toast ── */
+  #error-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2a1515;
+    border: 1px solid #f87272;
+    color: #f87272;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    display: none;
+  }
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="overlay">
-    <div class="spinner"></div>
-    <div class="ov-title">Loading projects…</div>
-    <div class="ov-sub">Fetching live data from Supabase</div>
-  </div>
-  <header>
-    <div><div class="h-title">Design Project Tracker</div><div class="h-sub">Portfolio Report &nbsp;·&nbsp; Elite Kitchen &amp; Bath</div></div>
-    <div class="spacer"></div>
-    <div class="legend">
-      <div class="l-item"><div class="l-dot past"></div>Past</div>
-      <div class="l-item"><div class="l-dot future"></div>Scheduled</div>
-      <div class="l-item"><div class="l-dot empty"></div>Pending</div>
-    </div>
-    <div class="ts-badge">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><polyline points="8,4.5 8,8 10.5,10"/></svg>
-      <span id="ts">Loading…</span>
-    </div>
-    <button class="refresh-btn" id="refreshBtn" onclick="loadData()">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-        <path d="M13.5 2.5A7 7 0 1 1 2 8.5"/><path d="M13.5 2.5V6.5H9.5"/>
-      </svg>
-      Refresh
-    </button>
-    <button class="edit-toggle" id="editToggle" onclick="toggleEditMode()">
-      <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11 2l3 3-8 8H3v-3L11 2z"/></svg>
-      Edit
-    </button>
-  </header>
-  <div id="stats-bar"></div>
-  <div class="edit-mode-bar" id="editModeBar">
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M11 2l3 3-8 8H3v-3L11 2z"/></svg>
-    <strong>Edit mode:</strong> Click any date to change it · Click a project name to rename · Click ✕ to delete a project · Changes save immediately to Supabase
-    <button onclick="toggleEditMode()" style="margin-left:auto;background:none;border:1px solid #92400E;color:#92400E;border-radius:4px;padding:3px 10px;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;">Done editing</button>
-  </div>
-  <div id="tabs">
-    <div class="tab" onclick="switchTab('table',this)">Projects</div>
-    <div class="tab on" onclick="switchTab('timing',this)">Step Timing</div>
-  </div>
-  <div id="filter-bar"></div>
-  <div id="panel-table"><div class="tbl-wrap"><div id="tbl"></div></div></div>
-  <div id="panel-timing"></div>
-</div>
-<div id="modal-overlay" onclick="closeModal(event)">
-  <div id="modal">
-    <div class="modal-head">
-      <div><div class="modal-title" id="modal-title"></div><div class="modal-sub" id="modal-sub"></div></div>
-      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
-    </div>
-    <div class="modal-body" id="modal-body"></div>
+
+<!-- ── SETUP ── -->
+<div id="setup">
+  <h1>Design Project Tracker</h1>
+  <p class="sub">Connect your Asana workspace to get started</p>
+  <div class="setup-card">
+    <label>Asana Personal Access Token</label>
+    <input type="password" id="token-input" placeholder="1/xxxxxxxxxxxxxxxx..." />
+    <p class="help-link">
+      Get your token at <a href="https://app.asana.com/0/my-apps" target="_blank">app.asana.com/0/my-apps</a> → Personal Access Tokens
+    </p>
+    <div id="setup-error"></div>
+    <button class="btn" id="connect-btn" onclick="connect()">Connect to Asana</button>
   </div>
 </div>
+
+<!-- ── LOADING ── -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p id="loading-msg">Connecting to Asana...</p>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="dashboard">
+  <div class="dash-header">
+    <h1>Design Project Tracker — 2026</h1>
+    <div class="dash-meta">
+      <div class="live-dot"><span class="dot-indicator"></span> Live</div>
+      <span id="project-count">— active projects</span>
+      <span id="last-updated">—</span>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div id="refresh-bar" style="display:none"></div>
+<div id="error-toast"></div>
+
 <script>
-// ── CONFIG ─────────────────────────────────────────────────────
-const SUPABASE_URL      = 'https://cdatfhovpermqptkfmbc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNkYXRmaG92cGVybXFwdGtmbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxODYwMzUsImV4cCI6MjA5Mzc2MjAzNX0.r53ZXOCowIhGxX10lf2ggYgZHMKfQK6v0IdmHDxv-fE';
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const PORTFOLIO_GID   = '1213865621316992';
+const PHASE_FIELD     = 'PHASE_';
+const REFRESH_MS      = 120_000; // 2 minutes
 
-// ── STATE ───────────────────────────────────────────────────────
-let allProjects  = [];
-let timingData   = [];
-let phaseData    = [];
-let activeFilter = 'ALL';
-let stepOrder    = {};   // step_name → step_number for sorting
-let autoTimer    = null;
-let editMode     = false;
-
-// ── STEP DISPLAY ORDER ──────────────────────────────────────────
-// The real-world sequence of steps. This is the single source of truth for
-// ordering in BOTH the Projects table and the Step Timing calculations.
-// It exists because step_number is NOT the display order: "Retainer Signed"
-// was added later as step_number 41, so sorting by number would push it to
-// the very end and make Step Timing measure Closing → Retainer Signed.
-const STEP_DISPLAY_ORDER = [
-  'First Contact',
+const STEPS = [
   'Home Consultation',
   'Creative Review',
   'Pre-Budget Meeting',
   'Budget Appointment',
-  'Retainer Signed',          // between Budget Appointment and Internal Ideas Session
   'Internal Ideas Session',
   'On-Site Visit',
-  'Appliance Meeting',
+  'Appliance Client Meeting',
   'Concept Development',
   'Concept Client Meeting',
   'Design Development',
-  'Cabinetry Meeting',
+  'Cabinetry Client Meeting',
   'Material Client Meeting',
   'Blue Tape',
   'Create Detailed Design Package',
@@ -273,744 +378,274 @@ const STEP_DISPLAY_ORDER = [
   'Closing Client Meeting',
 ];
 
-// Sort a steps array into real-world sequence. Any step whose name isn't in
-// STEP_DISPLAY_ORDER falls to the end, ordered by step_number.
-function sortStepsByDisplayOrder(arr) {
-  return [...arr].sort((a, b) => {
-    const posA = STEP_DISPLAY_ORDER.indexOf(a.step_name);
-    const posB = STEP_DISPLAY_ORDER.indexOf(b.step_name);
-    if (posA === -1 && posB === -1) return a.step_number - b.step_number;
-    if (posA === -1) return 1;
-    if (posB === -1) return -1;
-    return posA - posB;
+// Exact values as stored in Asana's PHASE_ custom field (index matches STEPS)
+const ASANA_PHASE_VALUES = [
+  '# 1 Home Consultation',
+  '# 2 Creative Review',
+  '# 3 Pre-Budget Meeting',
+  '# 4 Budget Appointment',
+  '# 5 Internal Ideas Session',
+  '# 6 On-Site Visit',
+  '# 7 Appliance Client Meeting',
+  '# 8 Concept Development',
+  '# 9 Concept Client Meeting',
+  '# 10 Design Development',
+  '# 11 Cabinetry Client Meeting',
+  '# 12 Material Client Meeting',
+  '# 13 Blue Tape',
+  '# 14 Create Detailed Design Package',
+  '# 15 Internal Team Handoff',
+  '# 16 Client Design Presentation',
+  '# 17 Pre-Closing Internal Meeting',
+  '# 18 Pre-Closing Client Meeting',
+  '# 19 Closing Client Meeting',
+];
+
+// Step colours — cool blue → warm amber → green finish (19 steps)
+const STEP_COLORS = [
+  '#4f9cf9','#5ba3f9','#58a6ff','#63b3ed','#7ec8e3',
+  '#81d4c8','#6ecfbe','#f6c453','#f5a623','#f49b0a',
+  '#e87e25','#e86c25','#e85a47','#c857e8','#a55cee',
+  '#7c6fea','#5b82e5','#38c4e0','#4ade80',
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let apiToken       = '';
+let portfolioGid   = '';
+let refreshTimer   = null;
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+const api = async (path) => {
+  const r = await fetch(`https://app.asana.com/api/1.0${path}`, {
+    headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' }
   });
-}
-
-// ── LOAD DATA FROM SUPABASE ─────────────────────────────────────
-async function loadData() {
-  const btn = document.getElementById('refreshBtn');
-  btn.disabled = true;
-  btn.classList.add('spin');
-  document.getElementById('ts').textContent = 'Loading…';
-
-  try {
-    // Use plain fetch to Supabase REST API — no library needed, Edge-safe
-    const base = SUPABASE_URL.trim().replace(/\/$/, '');
-    const hdrs = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
-
-    const [stepsResp, jobsResp, datesResp] = await Promise.all([
-      fetch(base + '/rest/v1/steps?select=id,step_number,step_name&order=step_number.asc', {headers: hdrs}),
-      fetch(base + '/rest/v1/jobs?select=id,address,job_type,status&status=eq.active&order=created_at.desc', {headers: hdrs}),
-      fetch(base + '/rest/v1/step_dates?select=job_id,step_id,event_date,source', {headers: hdrs}),
-    ]);
-
-    if (!stepsResp.ok) throw new Error('Steps: ' + stepsResp.status + ' ' + await stepsResp.text());
-    if (!jobsResp.ok)  throw new Error('Jobs: '  + jobsResp.status  + ' ' + await jobsResp.text());
-    if (!datesResp.ok) throw new Error('Dates: ' + datesResp.status + ' ' + await datesResp.text());
-
-    const steps    = await stepsResp.json();
-    const jobs     = await jobsResp.json();
-    const rawDates = await datesResp.json();
-
-
-    // Build step lookup maps
-    const stepById   = Object.fromEntries(steps.map(s => [s.id, s]));
-    stepOrder        = Object.fromEntries(steps.map(s => [s.step_name, s.step_number]));
-
-    // Build date lookup: {job_id: {step_id: {date, source}}}
-    // Coerce step_id to Number to avoid string/int mismatch
-    const dateLookup = {};
-    for (const row of rawDates) {
-      if (!dateLookup[row.job_id]) dateLookup[row.job_id] = {};
-      dateLookup[row.job_id][Number(row.step_id)] = { date: row.event_date, source: row.source || 'asana' };
-    }
-
-    // Build projects array
-    allProjects = jobs.map(job => {
-      const jDates   = dateLookup[job.id] || {};
-      const dates    = {};
-      const sources  = new Set();
-      for (const s of steps) {
-        const d = jDates[Number(s.step_number)];
-        if (d) {
-          dates[s.step_name] = d.date;
-          sources.add(d.source);
-        } else {
-          dates[s.step_name] = null;
-        }
-      }
-      const name = (job.address || '') + (job.job_type ? ' - ' + job.job_type : '');
-      // Compute a pseudo-phase from highest step with data
-      const lastStep = steps.filter(s => jDates[Number(s.step_number)]).sort((a,b) => b.step_number - a.step_number)[0];
-      let phase = null;
-      if (lastStep) {
-        // Budgeting: steps 1-4 (HA through Budget Appointment)
-        // Design: steps 5-16 plus Retainer Signed (41)
-        // Closed: steps 17-18 (Pre-Closing and beyond)
-        if (lastStep.step_number >= 17)            phase = 'Closed';
-        else if (lastStep.step_number >= 5
-              || lastStep.step_number === 41)       phase = 'Design';
-        else if (lastStep.step_number >= 1)        phase = 'Budgeting';
-      }
-      return { name, gid: job.id, phase, dates, sources: [...sources] };
-    });
-
-    // Compute timing data (consecutive step pairs).
-    // Uses display order so Retainer Signed sits between Budget Appointment and
-    // Internal Ideas Session, instead of last (its step_number is 41).
-    const orderedSteps = sortStepsByDisplayOrder(steps);
-    timingData = [];
-    for (let i = 0; i < orderedSteps.length - 1; i++) {
-      const fromStep = orderedSteps[i];
-      const toStep   = orderedSteps[i+1];
-      const entries  = [];
-      for (const job of jobs) {
-        const jd       = dateLookup[job.id] || {};
-        const fromRow  = jd[Number(fromStep.step_number)];
-        const toRow    = jd[Number(toStep.step_number)];
-        if (!fromRow || !toRow) continue;
-        const diff = Math.round((new Date(toRow.date) - new Date(fromRow.date)) / 86400000);
-        if (diff < 0) continue;
-        const jName = (job.address||'') + (job.job_type ? ' - '+job.job_type : '');
-        entries.push({ name: jName, days: diff });
-      }
-      entries.sort((a,b) => a.days - b.days);
-      const n   = entries.length;
-      const avg = n ? Math.round(entries.reduce((s,e)=>s+e.days,0)/n) : 0;
-      timingData.push({
-        from: fromStep.step_name, to: toStep.step_name,
-        n, entries, avg,
-        min: n ? entries[0].days : 0,
-        max: n ? entries[n-1].days : 0,
-        has_data: n >= 1,
-        need: Math.max(0, 1-n),
-      });
-    }
-
-    // Compute phase summary cards
-    function phaseRange(fromNum, toNum, label, color) {
-      const fs = steps.find(s=>s.step_number===fromNum);
-      const ts = steps.find(s=>s.step_number===toNum);
-      if (!fs||!ts) return null;
-      const entries = [];
-      for (const job of jobs) {
-        const jd  = dateLookup[job.id]||{};
-        const fd  = jd[Number(fs.step_number)]; const td = jd[Number(ts.step_number)];
-        if (!fd||!td) continue;
-        const diff = Math.round((new Date(td.date)-new Date(fd.date))/86400000);
-        if (diff<0) continue;
-        const jName = (job.address||'')+(job.job_type?' - '+job.job_type:'');
-        entries.push({name:jName,days:diff,end:td.date});
-      }
-      entries.sort((a,b)=>a.days-b.days);
-      const n=entries.length;
-      const avg=n?Math.round(entries.reduce((s,e)=>s+e.days,0)/n):0;
-      return {label,color,from:fs.step_name,to:ts.step_name,n,entries,avg,
-        min:n?entries[0].days:0,max:n?entries[n-1].days:0,
-        has_data:n>=1,need:Math.max(0,1-n)};
-    }
-    // Design Phase: start = Retainer Signed (41) → Closing (18)
-    // Fallback order: Retainer Signed → Internal Ideas (5) → On-Site Visit (6)
-    // Skip if no closing date or none of the three start options exist
-    function designPhase() {
-      const stepRetainer = steps.find(s=>s.step_number===41);
-      const step5        = steps.find(s=>s.step_number===5);
-      const step6        = steps.find(s=>s.step_number===6);
-      // Closing is step 19. Jobs closed before the renumber still have their
-      // closing date stored under step 18, so fall back to 18 to keep them in.
-      const stepClosing  = steps.find(s=>s.step_number===19) || steps.find(s=>s.step_number===18);
-      if (!stepClosing) return null;
-      const entries = [];
-      for (const job of jobs) {
-        const jd = dateLookup[job.id]||{};
-        const td = jd[19] || jd[18]; // closing date (19 current, 18 legacy)
-        if (!td) continue;
-        // Priority: Retainer Signed → Internal Ideas → On-Site Visit
-        const fd = jd[41] || jd[5] || jd[6];
-        if (!fd) continue;
-        const diff = Math.round((new Date(td.date)-new Date(fd.date))/86400000);
-        if (diff<0) continue;
-        const jName = (job.address||'')+(job.job_type?' - '+job.job_type:'');
-        const startLabel = jd[41] ? 'from Retainer Signed'
-                         : jd[5]  ? null
-                         :           'from On-Site Visit';
-        entries.push({name:jName, days:diff, startNote: startLabel, end: td.date});
-      }
-      entries.sort((a,b)=>a.days-b.days);
-      const n=entries.length;
-      const avg=n?Math.round(entries.reduce((s,e)=>s+e.days,0)/n):0;
-      const fromLabel = 'Retainer Signed (or Internal Ideas / On-Site Visit)';
-      return {label:'Design Phase',color:'#B8962E',from:fromLabel,to:stepClosing.step_name,
-        n,entries,avg,min:n?entries[0].days:0,max:n?entries[n-1].days:0,
-        has_data:n>=1,need:Math.max(0,1-n)};
-    }
-
-    phaseData = [
-      phaseRange(1, 4, 'Budget Phase',  '#2D5A41'),
-      designPhase(),
-    ].filter(Boolean);
-
-    // Update timestamp
-    const now = new Date();
-    document.getElementById('ts').textContent =
-      'Live · Updated ' + now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-
-    // Hide overlay and render
-    document.getElementById('overlay').classList.add('hidden');
-    renderStats();
-    renderFilters();
-    renderTable();
-    renderTiming();
-
-  } catch(e) {
-    console.error('Load error:', e);
-    document.getElementById('ts').textContent = 'Error loading data';
-    // Always hide overlay so user isn't stuck on loading screen
-    document.getElementById('overlay').classList.add('hidden');
-    document.getElementById('panel-table').style.display = 'flex';
-    document.getElementById('tbl').innerHTML =
-      '<div class="err-msg" style="padding:40px 24px;text-align:center;color:var(--red);font-size:13px;line-height:1.8">'
-      + '⚠ ' + (e.message||'Could not load data from Supabase.').replace(/\n/g,'<br>')
-      + '</div>';
-  } finally {
-    btn.disabled = false;
-    btn.classList.remove('spin');
-  }
-}
-
-// ── HELPERS ─────────────────────────────────────────────────────
-function parseD(v){ return v ? new Date(v+'T12:00:00') : null; }
-function fmtD(d){
-  const now=new Date();
-  return d.toLocaleDateString('en-US',
-    d.getFullYear()===now.getFullYear()
-      ? {month:'short',day:'numeric'}
-      : {month:'short',day:'numeric',year:'2-digit'});
-}
-function isToday(d){ return d.toDateString()===new Date().toDateString(); }
-
-// ── STATS BAR ──────────────────────────────────────────────────
-function renderStats(){
-  const sb2=document.getElementById('stats-bar');
-  const total   = allProjects.length;
-  const withDates = allProjects.filter(p=>Object.values(p.dates||{}).some(d=>d)).length;
-  const phases  = {};
-  allProjects.forEach(p=>{ const ph=p.phase||'—'; phases[ph]=(phases[ph]||0)+1; });
-  let html = sv(total,'Total Projects')+dv()+sv(withDates,'With Dates');
-  Object.entries(phases).sort((a,b)=>b[1]-a[1]).slice(0,4).forEach(([ph,ct])=>{
-    html+=dv()+sv(ct,ph);
-  });
-  sb2.innerHTML=html;
-}
-function sv(v,l){ return `<div class="stat"><div class="stat-val">${v}</div><div class="stat-lbl">${l}</div></div>`; }
-function dv()   { return `<div class="stat-div"></div>`; }
-
-// ── FILTER BAR ─────────────────────────────────────────────────
-function renderFilters(){
-  const fb=document.getElementById('filter-bar');
-  const options=['ALL','Budgeting','Design','Closed'];
-  fb.innerHTML=options.map(p=>
-    `<div class="pill${p===activeFilter?' on':''}" onclick="setFilter('${p}')">${p==='ALL'?'All':p}</div>`
-  ).join('');
-}
-function setFilter(p){ activeFilter=p; renderFilters(); renderTable(); renderTiming(); }
-
-// ── TABLE ──────────────────────────────────────────────────────
-function renderTable(){
-  const wrap=document.getElementById('tbl');
-  const today=new Date();
-  const q=(document.getElementById('si')?.value||'').toLowerCase();
-
-  const projects=allProjects.filter(p=>{
-    if(activeFilter!=='ALL'&&(p.phase||'—')!==activeFilter) return false;
-    if(q&&!p.name.toLowerCase().includes(q)) return false;
-    return true;
-  });
-
-  if(!projects.length){
-    wrap.innerHTML='<div class="empty">No projects match.</div>';
-    return;
-  }
-
-  // Explicit column order by name — avoids type coercion issues with step_number
-  // Single source of truth — defined once at the top of the script so the
-  // Projects table and Step Timing can never drift out of sync.
-  const NAME_ORDER = STEP_DISPLAY_ORDER;
-  const cols = [...new Set(Object.keys(stepOrder))].sort((a,b)=>{
-    const posA = NAME_ORDER.indexOf(a);
-    const posB = NAME_ORDER.indexOf(b);
-    if(posA===-1&&posB===-1) return (stepOrder[a]||0)-(stepOrder[b]||0);
-    if(posA===-1) return 1;
-    if(posB===-1) return -1;
-    return posA-posB;
-  });
-
-  let html=`<table><thead><tr>
-    <th><div class="th-inner">Project</div></th>
-    ${cols.map(c=>`<th title="${c}"><div class="th-inner">${c}</div></th>`).join('')}
-  </tr></thead><tbody>`;
-
-  projects.forEach(p=>{
-    const dates=p.dates||{};
-    const srcBadges=(p.sources||[]).map(s=>`<span class="src-badge ${s}">${s}</span>`).join('');
-
-    if(editMode){
-      // Edit mode: inline inputs
-      html+=`<tr>
-        <td class="pname editing" style="display:flex;align-items:center;gap:5px">
-          <input class="pname-input" value="${p.name.replace(/"/g,'&quot;')}" 
-            onblur="saveJobName('${p.gid}',this.value)"
-            onkeydown="if(event.key==='Enter')this.blur()" />
-          <button class="del-btn" onclick="deleteJob('${p.gid}','${p.name.replace(/'/g,"\'")}')">✕</button>
-        </td>`;
-    } else {
-      html+=`<tr>
-        <td class="pname">
-          <div class="pn-text" title="${p.name}">${p.name}</div>
-          ${srcBadges ? `<div class="src-badges">${srcBadges}</div>` : ''}
-        </td>`;
-    }
-
-    cols.forEach(c=>{
-      const d=parseD(dates[c]);
-      if(editMode){
-        const val=dates[c]||'';
-        html+=`<td class="dcell editing">
-          <input type="date" class="date-input-cell${val?' has-val':''}" 
-            value="${val}" data-job="${p.gid}" data-step="${c}"
-            onchange="saveStepDate('${p.gid}','${c}',this.value,this)"
-            oninput="this.classList.toggle('has-val',!!this.value)" />
-          ${val?`<button class="date-clear-btn" onclick="clearStepDate('${p.gid}','${c}',this)" title="Clear date">×</button>`:''}
-        </td>`;
-      } else {
-        if(!d){ html+=`<td class="dcell"><div class="dash"></div></td>`; return; }
-        const tod=isToday(d), past=!tod&&d<today;
-        const cls=tod?'today':past?'past':'fut';
-        html+=`<td class="dcell"><div class="chip ${cls}">${fmtD(d)}</div></td>`;
-      }
-    });
-    html+=`</tr>`;
-  });
-  wrap.innerHTML=html+'</tbody></table>';
-}
-
-// ── EDIT MODE TOGGLE ────────────────────────────────────────────
-function toggleEditMode(){
-  editMode=!editMode;
-  document.getElementById('editToggle').classList.toggle('on',editMode);
-  document.getElementById('editModeBar').classList.toggle('show',editMode);
-  renderTable(); // re-render in/out of edit mode without wiping in-memory state
-}
-
-// ── SAVE JOB NAME ───────────────────────────────────────────────
-async function saveJobName(jobId, newName){
-  newName=newName.trim();
-  if(!newName) return;
-  const proj=allProjects.find(p=>p.gid===jobId);
-  if(!proj||proj.name===newName) return;
-
-  // Parse address and job_type from "address - jobtype"
-  const dashIdx=newName.indexOf(' - ');
-  const address = dashIdx>=0 ? newName.substring(0,dashIdx).trim() : newName;
-  const job_type= dashIdx>=0 ? newName.substring(dashIdx+3).trim() : '';
-
-  const base=SUPABASE_URL.trim().replace(/\/$/, '');
-  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,
-               'Content-Type':'application/json','Prefer':'return=minimal'};
-  const resp=await fetch(base+'/rest/v1/jobs?id=eq.'+jobId, {
-    method:'PATCH', headers:hdrs,
-    body:JSON.stringify({address, job_type: job_type||null})
-  });
-  if(resp.ok){
-    proj.name=newName;
-    showToast('Renamed to: '+newName);
-  } else {
-    const errText = await resp.text();
-    console.error('job rename failed', resp.status, errText);
-    showToast('Save failed: '+resp.status, true);
-  }
-}
-
-// ── SAVE STEP DATE ──────────────────────────────────────────────
-async function saveStepDate(jobId, stepName, newDate, inputEl){
-  const base=SUPABASE_URL.trim().replace(/\/$/, '');
-  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,
-               'Content-Type':'application/json','Prefer':'return=minimal'};
-
-  // Find step_id (step_number) for this step name
-  const stepNum=stepOrder[stepName];
-  if(stepNum === undefined || stepNum === null){ showToast('Unknown step: '+stepName, true); return; }
-
-  if(inputEl) inputEl.style.opacity='.5';
-
-  if(newDate){
-    // Upsert into step_dates
-    const resp=await fetch(base+'/rest/v1/step_dates', {
-      method:'POST', headers:{...hdrs, 'Prefer':'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify({job_id:jobId, step_id:stepNum, event_date:newDate, source:'calendar',
-                           updated_at:new Date().toISOString()})
-    });
-    if(resp.ok){
-      const proj=allProjects.find(p=>p.gid===jobId);
-      if(proj) { proj.dates[stepName]=newDate; if(!proj.sources.includes('calendar')) proj.sources.push('calendar'); }
-      if(inputEl){ inputEl.style.opacity=''; inputEl.classList.add('has-val'); }
-      showToast('Date saved');
-    } else {
-      if(inputEl) inputEl.style.opacity='';
-      const errText = await resp.text();
-      console.error('step_dates save failed', resp.status, errText);
-      showToast('Save failed: '+resp.status, true);
-    }
-  }
-}
-
-// ── CLEAR STEP DATE ─────────────────────────────────────────────
-async function clearStepDate(jobId, stepName, clearBtn){
-  if(!confirm('Clear the '+stepName+' date for this project?')) return;
-  const stepNum=stepOrder[stepName];
-  if(!stepNum) return;
-  const base=SUPABASE_URL.trim().replace(/\/$/, '');
-  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY};
-  const resp=await fetch(base+'/rest/v1/step_dates?job_id=eq.'+jobId+'&step_id=eq.'+stepNum, {
-    method:'DELETE', headers:hdrs
-  });
-  if(resp.ok){
-    const proj=allProjects.find(p=>p.gid===jobId);
-    if(proj) proj.dates[stepName]=null;
-    // Remove clear button and clear the input
-    const cell=clearBtn.closest('td');
-    const inp=cell.querySelector('input[type=date]');
-    if(inp){ inp.value=''; inp.classList.remove('has-val'); }
-    clearBtn.remove();
-    showToast('Date cleared');
-  } else {
-    showToast('Delete failed: '+resp.status, true);
-  }
-}
-
-// ── DELETE JOB ──────────────────────────────────────────────────
-async function deleteJob(jobId, jobName){
-  if(!confirm('Archive "'+jobName+'"?\n\nThis marks the job as archived and removes it from the tracker. Step dates are kept.')) return;
-  const base=SUPABASE_URL.trim().replace(/\/$/, '');
-  const hdrs={'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,
-               'Content-Type':'application/json','Prefer':'return=minimal'};
-  const resp=await fetch(base+'/rest/v1/jobs?id=eq.'+jobId, {
-    method:'PATCH', headers:hdrs, body:JSON.stringify({status:'archived'})
-  });
-  if(resp.ok){
-    allProjects=allProjects.filter(p=>p.gid!==jobId);
-    renderTable();
-    renderStats();
-    showToast('Archived: '+jobName);
-  } else {
-    const errText = await resp.text();
-    console.error('job archive failed', resp.status, errText);
-    showToast('Delete failed: '+resp.status, true);
-  }
-}
-
-// ── TOAST NOTIFICATION ──────────────────────────────────────────
-function showToast(msg, isErr=false){
-  let t=document.getElementById('toast');
-  if(!t){
-    t=document.createElement('div');
-    t.id='toast';
-    t.style.cssText='position:fixed;bottom:24px;right:24px;padding:8px 16px;border-radius:6px;font-size:12px;font-family:DM Sans,sans-serif;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;';
-    document.body.appendChild(t);
-  }
-  t.textContent=msg;
-  t.style.background=isErr?'#991B1B':'#1C3A2E';
-  t.style.color='#F5EDD8';
-  t.style.opacity='1';
-  clearTimeout(t._timer);
-  t._timer=setTimeout(()=>t.style.opacity='0', 2500);
-}
-
-// ── TIMING TAB ─────────────────────────────────────────────────
-function switchTab(tab,el){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
-  el.classList.add('on');
-  document.getElementById('filter-bar').style.display  = tab==='table'?'flex':'none';
-  const tableEl  = document.getElementById('panel-table');
-  const timingEl = document.getElementById('panel-timing');
-  tableEl.style.display = tab==='table' ? 'flex' : 'none';
-  timingEl.classList.toggle('show', tab==='timing');
-}
-
-function renderTiming(){
-  const panel=document.getElementById('panel-timing');
-  const hasData=timingData.filter(r=>r.has_data);
-  const maxAvg=hasData.length?Math.max(...hasData.map(r=>r.avg)):1;
-
-  let html=`<div class="timing-header">Step Timing Breakdown</div>
-<div class="timing-sub">Average calendar days between stages — ${allProjects.length} projects · click any card to see individual jobs</div>
-<div class="phase-row">`;
-
-  phaseData.forEach((ph,i)=>{
-    if(ph.has_data){
-      html+=`<div class="ph-sum-card" style="--ph-color:${ph.color}" onclick="openModal(phaseData[${i}])">
-  <div class="ph-sum-label">${ph.label}</div>
-  <div class="ph-sum-range">${ph.from} → ${ph.to}</div>
-  <div class="ph-sum-avg">${ph.avg} <span>days avg</span></div>
-  <div class="ph-sum-meta"><span>Min <strong>${ph.min}d</strong></span><span><strong>${ph.n}</strong> projects</span><span>Max <strong>${ph.max}d</strong></span></div>
-  <div class="click-hint">↗ Click to see breakdown</div>
-</div>`;
-    } else {
-      html+=`<div class="ph-sum-card no-data" style="--ph-color:#DDD7CC">
-  <div class="ph-sum-label">${ph.label}</div>
-  <div class="ph-sum-range">${ph.from} → ${ph.to}</div>
-  <div class="ph-sum-avg" style="font-size:22px;color:var(--gray)">—</div>
-  <div class="t-need" style="margin-top:8px">No data yet<br><small style="color:var(--gray)">No projects span this full phase</small></div>
-</div>`;
-    }
-  });
-
-  html+=`</div>
-<div class="timing-divider"><span>Charts</span></div>
-<div class="chart-grid">
-  <div class="chart-card wide">
-    <div class="chart-title">Average Days per Step</div>
-    <div class="chart-sub">Click a bar for the job list</div>
-    <div class="chart-box" id="chartStepsBox"><canvas id="chartSteps"></canvas></div>
-  </div>
-  <div class="chart-card">
-    <div class="chart-title">Budget Phase Length Over Time</div>
-    <div class="chart-sub">Average days, grouped by the month the phase ended</div>
-    <div class="chart-box"><canvas id="chartBudgetTrend"></canvas></div>
-  </div>
-  <div class="chart-card">
-    <div class="chart-title">Design Phase Length Over Time</div>
-    <div class="chart-sub">Average days, grouped by the month the phase ended</div>
-    <div class="chart-box"><canvas id="chartDesignTrend"></canvas></div>
-  </div>
-</div>
-<div class="timing-divider"><span>Step by Step</span></div><div class="timing-grid">`;
-
-  timingData.forEach((r,i)=>{
-    if(r.has_data){
-      const pct=Math.round((r.avg/maxAvg)*100);
-      html+=`<div class="t-card clickable" onclick="openModal(timingData[${i}])">
-  <div class="t-arrow">${r.from} → ${r.to}</div>
-  <div class="t-avg">${r.avg} <span>days avg</span></div>
-  <div class="t-bar-wrap"><div class="t-bar" style="width:${pct}%"></div></div>
-  <div class="t-meta"><span>Min <strong>${r.min}d</strong></span><span><strong>${r.n}</strong> projects</span><span>Max <strong>${r.max}d</strong></span></div>
-  <div class="t-hint">↗ Click to see all ${r.n} jobs</div>
-</div>`;
-    } else {
-      html+=`<div class="t-card no-data">
-  <div class="t-arrow">${r.from} → ${r.to}</div>
-  <div class="t-avg" style="font-size:20px;color:var(--gray)">—</div>
-  <div class="t-need">No data yet</div>
-  <div class="t-n">No projects have completed both steps</div>
-</div>`;
-    }
-  });
-
-  html+=`</div>`;
-  panel.innerHTML=html;
-  renderCharts();
-}
-
-// ── CHARTS (Chart.js) ──────────────────────────────────────────
-// Rebuilt on every renderTiming(), so they update live with each data load.
-const _charts = {};
-function _destroyChart(key){ if(_charts[key]){ _charts[key].destroy(); delete _charts[key]; } }
-function _chartEmpty(canvasId, msg){
-  const box = document.getElementById(canvasId)?.parentElement;
-  if(box) box.innerHTML = `<div class="chart-empty">${msg}</div>`;
-}
-
-function renderCharts(){
-  if(typeof Chart === 'undefined'){
-    ['chartSteps','chartBudgetTrend','chartDesignTrend'].forEach(id=>_chartEmpty(id,'Charts could not load (Chart.js unavailable).'));
-    return;
-  }
-  Chart.defaults.font.family = "'DM Sans', sans-serif";
-  Chart.defaults.font.size   = 11;
-  Chart.defaults.color       = '#8A8578';
-
-  // ── 1. Average days per step (horizontal bars) ──
-  _destroyChart('steps');
-  const stepRows = timingData.map((r,i)=>({r,i})).filter(x=>x.r.has_data);
-  if(!stepRows.length){ _chartEmpty('chartSteps','No step transitions with data yet.'); }
-  else {
-    // Size the chart to the number of bars so labels never crowd
-    document.getElementById('chartStepsBox').style.height = Math.max(260, stepRows.length*26 + 40) + 'px';
-    _charts.steps = new Chart(document.getElementById('chartSteps'), {
-      type: 'bar',
-      data: {
-        labels: stepRows.map(x=>'→ ' + x.r.to),
-        datasets: [{ label:'Average', data: stepRows.map(x=>x.r.avg),
-          backgroundColor:'#2D5A41', borderRadius:3, barPercentage:.6 }],
-      },
-      options: {
-        indexAxis:'y', maintainAspectRatio:false,
-        scales: {
-          x: { beginAtZero:true, title:{display:true,text:'Days'}, grid:{color:'#EFEAE2'} },
-          y: { grid:{display:false}, ticks:{color:'#1C2419'} },
-        },
-        plugins: {
-          legend: { display:false },
-          tooltip: { callbacks: {
-            title: items => { const r=stepRows[items[0].dataIndex].r; return `${r.from} → ${r.to}`; },
-            label: item => { const r=stepRows[item.dataIndex].r;
-              return `Average: ${r.avg} days (${r.n} project${r.n===1?'':'s'})`; },
-          }},
-        },
-        onClick: (evt, els) => { if(els.length) openModal(timingData[stepRows[els[0].index].i]); },
-        onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
-      },
-    });
-  }
-
-  // ── 2 & 3. Phase length over time — one chart per phase ──
-  renderPhaseTrend('budgetTrend', 'chartBudgetTrend', phaseData.find(p=>p.label==='Budget Phase'), '#2D5A41');
-  renderPhaseTrend('designTrend', 'chartDesignTrend', phaseData.find(p=>p.label==='Design Phase'), '#B8962E');
-}
-
-// Line chart of a phase's average length, grouped by the month it ended.
-function renderPhaseTrend(key, canvasId, ph, color){
-  _destroyChart(key);
-  const M = {};
-  (ph?.entries||[]).forEach(e=>{ if(!e.end) return; const k=e.end.substring(0,7); (M[k]=M[k]||[]).push(e.days); });
-  const months = Object.keys(M).sort();
-  if(!months.length){ _chartEmpty(canvasId,'Not enough completed phases yet.'); return; }
-  const avgOf = arr => Math.round(arr.reduce((s,v)=>s+v,0)/arr.length);
-  const monthLabel = k => new Date(k+'-15T12:00:00').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
-  const counts = months.map(k=>M[k].length);
-  _charts[key] = new Chart(document.getElementById(canvasId), {
-    type: 'line',
-    data: { labels: months.map(monthLabel), datasets: [{
-      label: ph.label, data: months.map(k=>avgOf(M[k])),
-      borderColor:color, backgroundColor:color, tension:.3, pointRadius:4, pointHoverRadius:6,
-    }]},
-    options: {
-      maintainAspectRatio:false,
-      scales: {
-        y: { beginAtZero:true, title:{display:true,text:'Avg days'}, grid:{color:'#EFEAE2'} },
-        x: { grid:{display:false} },
-      },
-      plugins: {
-        legend: { display:false },
-        tooltip: { callbacks: { label: item => {
-          const n = counts[item.dataIndex];
-          return `${item.formattedValue} days avg (${n} project${n===1?'':'s'})`;
-        }}},
-      },
-    },
-  });
-}
-
-// ── MODAL ──────────────────────────────────────────────────────
-function openModal(row){
-  const entries=row.entries||[];
-  const maxDays=entries.length?Math.max(...entries.map(e=>e.days)):1;
-  const avg=row.avg;
-  document.getElementById('modal-title').textContent=row.label||`${row.from} → ${row.to}`;
-  document.getElementById('modal-sub').textContent=row.label
-    ?`${row.from} → ${row.to} · end-to-end`
-    :`Step transition · ${entries.length} projects`;
-  let body=`<div class="modal-avg-row">
-  <div class="modal-stat"><div class="modal-stat-val">${row.avg}d</div><div class="modal-stat-lbl">Average</div></div>
-  <div class="modal-stat"><div class="modal-stat-val">${row.min}d</div><div class="modal-stat-lbl">Fastest</div></div>
-  <div class="modal-stat"><div class="modal-stat-val">${row.max}d</div><div class="modal-stat-lbl">Slowest</div></div>
-  <div class="modal-stat"><div class="modal-stat-val">${entries.length}</div><div class="modal-stat-lbl">Projects</div></div>
-</div><div class="job-list">`;
-  entries.forEach(e=>{
-    const pct=Math.round((e.days/maxDays)*100);
-    body+=`<div class="job-row">
-  <div class="job-name" title="${e.name}">${e.name}</div>
-  <div class="job-bar-wrap"><div class="job-bar${e.days>avg?' above':''}" style="width:${pct}%"></div></div>
-  <div class="job-days">${e.days}<span>d</span></div>
-</div>`;
-  });
-  body+=`</div>`;
-  if(entries.length){
-    body+=`<div class="chart-title" style="font-size:16px;margin-top:20px">All Data Points</div>
-<div class="chart-sub">Each bar is one project · dashed line = average</div>
-<div class="chart-box" style="height:240px"><canvas id="modalChart"></canvas></div>`;
-  }
-  document.getElementById('modal-body').innerHTML=body;
-  document.getElementById('modal-overlay').classList.add('show');
-  renderModalChart(entries, avg);
-}
-
-// Bar per project (same order as the list above), above-average in amber,
-// with a dashed average line across.
-function renderModalChart(entries, avg){
-  _destroyChart('modal');
-  if(!entries.length || typeof Chart === 'undefined') return;
-  const many = entries.length > 15;
-  _charts.modal = new Chart(document.getElementById('modalChart'), {
-    type: 'bar',
-    data: {
-      labels: entries.map(e=>e.name),
-      datasets: [
-        { type:'line', label:'Average', data: entries.map(()=>avg),
-          borderColor:'#1C3A2E', borderDash:[5,4], borderWidth:1.5, pointRadius:0, pointHoverRadius:0, order:0 },
-        { type:'bar', label:'Days', data: entries.map(e=>e.days),
-          backgroundColor: entries.map(e=> e.days>avg ? '#8B6914' : '#4A7A5E'),
-          borderRadius:2, order:1, barPercentage:.8 },
-      ],
-    },
-    options: {
-      maintainAspectRatio:false,
-      scales: {
-        y: { beginAtZero:true, title:{display:true,text:'Days'}, grid:{color:'#EFEAE2'} },
-        x: { grid:{display:false}, ticks:{ display:!many, autoSkip:false, maxRotation:60, minRotation:45,
-             callback: function(v){ const l=this.getLabelForValue(v); return l.length>18 ? l.slice(0,17)+'…' : l; } } },
-      },
-      plugins: {
-        legend: { display:false },
-        tooltip: {
-          filter: item => item.dataset.label==='Days',
-          callbacks: { label: item => `${item.raw} days  (avg ${avg})` },
-        },
-      },
-    },
-  });
-}
-
-function closeModal(e){
-  if(!e||e.target===document.getElementById('modal-overlay')||e.currentTarget?.classList.contains('modal-close'))
-    document.getElementById('modal-overlay').classList.remove('show');
-}
-
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape') document.getElementById('modal-overlay').classList.remove('show');
-});
-
-// ── INIT ───────────────────────────────────────────────────────
-document.getElementById('filter-bar').style.display='flex';
-document.getElementById('panel-table').style.display='none';
-document.getElementById('panel-timing').classList.add('show');
-
-loadData();
-
-// Egress optimization: the tracker is a reporting view, not a live tool —
-// design dates change infrequently, so a 5-min auto-refresh was pulling the
-// full step_dates table 96x/day per open tab for almost no benefit.
-// Instead: refresh only when the user returns to the tab after 10+ min away,
-// plus the manual Refresh button. Cuts tracker egress ~95%.
-let lastLoadedAt = Date.now();
-const STALE_MS = 10 * 60 * 1000; // 10 minutes
-
-// Wrap loadData to stamp the last-load time
-const _origLoadData = loadData;
-loadData = async function() {
-  const r = await _origLoadData.apply(this, arguments);
-  lastLoadedAt = Date.now();
-  return r;
+  if (!r.ok) throw new Error(`Asana API error ${r.status}: ${r.statusText}`);
+  return (await r.json()).data;
 };
 
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    const stale = Date.now() - lastLoadedAt;
-    if (stale >= STALE_MS) {
-      console.log('Tracker: tab refocused after ' + Math.round(stale/60000) + ' min — refreshing');
-      loadData();
-    }
+const setLoading = (msg) => {
+  document.getElementById('setup').style.display     = 'none';
+  document.getElementById('loading').style.display   = 'flex';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loading-msg').textContent = msg;
+};
+
+const showDashboard = () => {
+  document.getElementById('setup').style.display     = 'none';
+  document.getElementById('loading').style.display   = 'none';
+  document.getElementById('dashboard').style.display = 'flex';
+};
+
+const showError = (msg) => {
+  const t = document.getElementById('error-toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 5000);
+};
+
+// Fuzzy-ish match: strip punctuation/case and see if phase value maps to a step
+const normalise = s => s?.toLowerCase().replace(/[^a-z0-9]/g,'') ?? '';
+
+const matchStep = (phaseValue) => {
+  if (!phaseValue) return -1;
+  const trimmed = phaseValue.trim();
+
+  // 1. Exact match against known Asana phase values (fastest, most reliable)
+  const exact = ASANA_PHASE_VALUES.findIndex(v => v === trimmed);
+  if (exact >= 0) return exact;
+
+  // 2. Case-insensitive exact match
+  const exactCI = ASANA_PHASE_VALUES.findIndex(v => v.toLowerCase() === trimmed.toLowerCase());
+  if (exactCI >= 0) return exactCI;
+
+  // 3. Strip the "# N " prefix and match against step names
+  const stripped = trimmed.replace(/^#\s*\d+\s*/, '').trim();
+  const normStripped = normalise(stripped);
+  for (let i = 0; i < STEPS.length; i++) {
+    if (normalise(STEPS[i]) === normStripped) return i;
   }
+
+  // 4. Normalised full-value match against step names
+  const nv = normalise(trimmed);
+  for (let i = 0; i < STEPS.length; i++) {
+    if (normalise(STEPS[i]) === nv) return i;
+  }
+
+  // 5. Numeric prefix fallback e.g. "4" or "04"
+  const num = parseInt(trimmed);
+  if (!isNaN(num) && num >= 1 && num <= 19) return num - 1;
+
+  return -1; // unmatched — will log to console
+};
+
+// ── BUILD GRID ─────────────────────────────────────────────────────────────
+const buildGrid = () => {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  STEPS.forEach((name, i) => {
+    const color = STEP_COLORS[i];
+    const card = document.createElement('div');
+    card.className = 'step-card';
+    card.id = `step-${i}`;
+    card.style.setProperty('--step-color', color);
+    card.innerHTML = `
+      <div class="step-header">
+        <span class="step-num">${String(i+1).padStart(2,'0')}</span>
+        <span class="step-name">${name}</span>
+      </div>
+      <div class="step-body" id="body-${i}">
+        <span class="empty-state">No jobs</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+};
+
+// ── FETCH & RENDER ─────────────────────────────────────────────────────────
+const fetchAndRender = async () => {
+  try {
+    // Paginate through portfolio items
+    let allProjects = [];
+    let offset = undefined;
+    const fields = 'name,custom_fields,custom_fields.name,custom_fields.display_value,custom_fields.enum_value,custom_fields.text_value,custom_fields.gid,archived';
+    do {
+      const url = `/portfolios/${portfolioGid}/items?opt_fields=${fields}&limit=100` + (offset ? `&offset=${offset}` : '');
+      const resp = await fetch(`https://app.asana.com/api/1.0${url}`, {
+        headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' }
+      });
+      const json = await resp.json();
+      allProjects = allProjects.concat(json.data);
+      offset = json.next_page?.offset;
+    } while (offset);
+
+    // Filter out archived
+    const projects = allProjects.filter(p => !p.archived);
+
+    // Group by step
+    const buckets = Array.from({ length: STEPS.length }, () => []);
+    const unmatched = [];
+
+    projects.forEach(p => {
+      const phaseField = p.custom_fields?.find(cf =>
+        cf.name?.toUpperCase().replace(/\s/g,'_') === PHASE_FIELD ||
+        cf.name?.toUpperCase() === PHASE_FIELD
+      );
+      const value = phaseField?.display_value || phaseField?.enum_value?.name || phaseField?.text_value || null;
+      const idx = value ? matchStep(value) : -1;
+      if (idx >= 0) buckets[idx].push(p.name);
+      else if (value) unmatched.push({ name: p.name, phase: value });
+    });
+
+    // Render each step card as a dot cluster + count
+    let matchedTotal = 0;
+    STEPS.forEach((_, i) => {
+      const body  = document.getElementById(`body-${i}`);
+      const card  = document.getElementById(`step-${i}`);
+      const color = STEP_COLORS[i];
+      const count = buckets[i].length;
+      matchedTotal += count;
+      body.innerHTML = '';
+
+      if (count === 0) {
+        card.classList.remove('has-projects');
+        const empty = document.createElement('span');
+        empty.className = 'empty-state';
+        empty.textContent = 'No jobs';
+        body.appendChild(empty);
+      } else {
+        card.classList.add('has-projects');
+
+        const cluster = document.createElement('div');
+        cluster.className = 'dot-cluster';
+        for (let d = 0; d < count; d++) {
+          const dot = document.createElement('div');
+          dot.className = 'job-dot';
+          dot.title = buckets[i][d]; // hover tooltip with address, for anyone using a mouse
+          cluster.appendChild(dot);
+        }
+        body.appendChild(cluster);
+
+        const num = document.createElement('div');
+        num.className = 'count-number';
+        num.textContent = count;
+        body.appendChild(num);
+      }
+    });
+
+    // Update header
+    const total = matchedTotal;
+    document.getElementById('project-count').textContent = `${total} active project${total !== 1 ? 's' : ''}`;
+    document.getElementById('last-updated').textContent =
+      'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (unmatched.length) {
+      console.warn('Unmatched phases (check PHASE_ field values):', unmatched);
+    }
+  } catch (err) {
+    console.error(err);
+    showError('Failed to refresh data — will retry soon');
+  }
+};
+
+// ── COUNTDOWN BAR ─────────────────────────────────────────────────────────
+const startCountdown = () => {
+  const bar = document.getElementById('refresh-bar');
+  bar.style.display = 'block';
+  bar.style.animation = 'none';
+  bar.offsetHeight; // reflow
+  bar.style.animation = `shrink ${REFRESH_MS / 1000}s linear forwards`;
+};
+
+// ── CONNECT ────────────────────────────────────────────────────────────────
+const connect = async () => {
+  const token = document.getElementById('token-input').value.trim();
+  if (!token) return;
+  apiToken = token;
+  localStorage.setItem('asana_token', token);
+
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true;
+  document.getElementById('setup-error').textContent = '';
+
+  try {
+    setLoading('Authenticating...');
+    await api('/users/me?opt_fields=gid'); // just verify the token is valid
+
+    portfolioGid = PORTFOLIO_GID;
+    localStorage.setItem('asana_portfolio_gid', portfolioGid);
+
+    setLoading('Loading projects...');
+    buildGrid();
+    await fetchAndRender();
+    showDashboard();
+
+    // Auto-refresh loop
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(async () => {
+      await fetchAndRender();
+      startCountdown();
+    }, REFRESH_MS);
+    startCountdown();
+
+  } catch (err) {
+    document.getElementById('setup').style.display     = 'flex';
+    document.getElementById('loading').style.display   = 'none';
+    document.getElementById('setup-error').textContent = err.message;
+    btn.disabled = false;
+  }
+};
+
+// ── AUTO-LOGIN ─────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('asana_token');
+  if (saved) {
+    document.getElementById('token-input').value = saved;
+    connect();
+  }
+
+  // Allow Enter key in token field
+  document.getElementById('token-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') connect();
+  });
 });
 </script>
 </body>
