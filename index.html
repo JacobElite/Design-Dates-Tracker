@@ -8,6 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Design Project Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -140,6 +141,15 @@ td.dcell{padding:8px 6px;text-align:center;min-width:120px;border-right:1px soli
 .job-bar-wrap{width:80px;height:4px;background:var(--warm);border-radius:2px;overflow:hidden;flex-shrink:0;}
 .job-bar{height:100%;border-radius:2px;background:var(--g-light);}
 .job-bar.above{background:var(--amber);}
+
+/* ── CHARTS ── */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;margin-bottom:24px;}
+.chart-card{background:white;border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+.chart-card.wide{grid-column:1/-1;}
+.chart-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--g-dark);}
+.chart-sub{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.09em;margin:2px 0 12px;}
+.chart-box{position:relative;height:280px;}
+.chart-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--gray);font-size:12px;font-style:italic;}
 
 /* ── EDIT MODE ── */
 .edit-toggle{display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:4px;border:1px solid rgba(245,237,216,.2);background:rgba(245,237,216,.08);color:rgba(245,237,216,.7);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap;}
@@ -390,7 +400,7 @@ async function loadData() {
         const diff = Math.round((new Date(td.date)-new Date(fd.date))/86400000);
         if (diff<0) continue;
         const jName = (job.address||'')+(job.job_type?' - '+job.job_type:'');
-        entries.push({name:jName,days:diff});
+        entries.push({name:jName,days:diff,end:td.date});
       }
       entries.sort((a,b)=>a.days-b.days);
       const n=entries.length;
@@ -406,12 +416,14 @@ async function loadData() {
       const stepRetainer = steps.find(s=>s.step_number===41);
       const step5        = steps.find(s=>s.step_number===5);
       const step6        = steps.find(s=>s.step_number===6);
-      const step18       = steps.find(s=>s.step_number===18);
-      if (!step18) return null;
+      // Closing is step 19. Jobs closed before the renumber still have their
+      // closing date stored under step 18, so fall back to 18 to keep them in.
+      const stepClosing  = steps.find(s=>s.step_number===19) || steps.find(s=>s.step_number===18);
+      if (!stepClosing) return null;
       const entries = [];
       for (const job of jobs) {
         const jd = dateLookup[job.id]||{};
-        const td = jd[18]; // closing date
+        const td = jd[19] || jd[18]; // closing date (19 current, 18 legacy)
         if (!td) continue;
         // Priority: Retainer Signed → Internal Ideas → On-Site Visit
         const fd = jd[41] || jd[5] || jd[6];
@@ -422,13 +434,13 @@ async function loadData() {
         const startLabel = jd[41] ? 'from Retainer Signed'
                          : jd[5]  ? null
                          :           'from On-Site Visit';
-        entries.push({name:jName, days:diff, startNote: startLabel});
+        entries.push({name:jName, days:diff, startNote: startLabel, end: td.date});
       }
       entries.sort((a,b)=>a.days-b.days);
       const n=entries.length;
       const avg=n?Math.round(entries.reduce((s,e)=>s+e.days,0)/n):0;
       const fromLabel = 'Retainer Signed (or Internal Ideas / On-Site Visit)';
-      return {label:'Design Phase',color:'#B8962E',from:fromLabel,to:step18?.step_name,
+      return {label:'Design Phase',color:'#B8962E',from:fromLabel,to:stepClosing.step_name,
         n,entries,avg,min:n?entries[0].days:0,max:n?entries[n-1].days:0,
         has_data:n>=1,need:Math.max(0,1-n)};
     }
@@ -753,7 +765,26 @@ function renderTiming(){
     }
   });
 
-  html+=`</div><div class="timing-divider"><span>Step by Step</span></div><div class="timing-grid">`;
+  html+=`</div>
+<div class="timing-divider"><span>Charts</span></div>
+<div class="chart-grid">
+  <div class="chart-card wide">
+    <div class="chart-title">Average Days per Step</div>
+    <div class="chart-sub">Dark bar = average · light band = fastest to slowest · click a bar for the job list</div>
+    <div class="chart-box" id="chartStepsBox"><canvas id="chartSteps"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Phase Length Over Time</div>
+    <div class="chart-sub">Average days, grouped by the month each phase ended</div>
+    <div class="chart-box"><canvas id="chartTrend"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Pipeline Reach</div>
+    <div class="chart-sub">Active projects with a date on each step</div>
+    <div class="chart-box"><canvas id="chartFunnel"></canvas></div>
+  </div>
+</div>
+<div class="timing-divider"><span>Step by Step</span></div><div class="timing-grid">`;
 
   timingData.forEach((r,i)=>{
     if(r.has_data){
@@ -777,6 +808,140 @@ function renderTiming(){
 
   html+=`</div>`;
   panel.innerHTML=html;
+  renderCharts();
+}
+
+// ── CHARTS (Chart.js) ──────────────────────────────────────────
+// Rebuilt on every renderTiming(), so they update live with each data load.
+const _charts = {};
+function _destroyChart(key){ if(_charts[key]){ _charts[key].destroy(); delete _charts[key]; } }
+function _chartEmpty(canvasId, msg){
+  const box = document.getElementById(canvasId)?.parentElement;
+  if(box) box.innerHTML = `<div class="chart-empty">${msg}</div>`;
+}
+
+function renderCharts(){
+  if(typeof Chart === 'undefined'){
+    ['chartSteps','chartTrend','chartFunnel'].forEach(id=>_chartEmpty(id,'Charts could not load (Chart.js unavailable).'));
+    return;
+  }
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  Chart.defaults.font.size   = 11;
+  Chart.defaults.color       = '#8A8578';
+
+  // ── 1. Average days per step (horizontal, with min–max band) ──
+  _destroyChart('steps');
+  const stepRows = timingData.map((r,i)=>({r,i})).filter(x=>x.r.has_data);
+  if(!stepRows.length){ _chartEmpty('chartSteps','No step transitions with data yet.'); }
+  else {
+    // Size the chart to the number of bars so labels never crowd
+    document.getElementById('chartStepsBox').style.height = Math.max(260, stepRows.length*26 + 40) + 'px';
+    _charts.steps = new Chart(document.getElementById('chartSteps'), {
+      type: 'bar',
+      data: {
+        labels: stepRows.map(x=>'→ ' + x.r.to),
+        datasets: [
+          { label:'Range', data: stepRows.map(x=>[x.r.min, x.r.max]),
+            backgroundColor:'rgba(74,122,94,.18)', borderRadius:3, grouped:false, order:2, barPercentage:.8 },
+          { label:'Average', data: stepRows.map(x=>x.r.avg),
+            backgroundColor:'#2D5A41', borderRadius:3, grouped:false, order:1, barPercentage:.45 },
+        ],
+      },
+      options: {
+        indexAxis:'y', maintainAspectRatio:false,
+        scales: {
+          x: { beginAtZero:true, title:{display:true,text:'Days'}, grid:{color:'#EFEAE2'} },
+          y: { grid:{display:false}, ticks:{color:'#1C2419'} },
+        },
+        plugins: {
+          legend: { display:false },
+          tooltip: { callbacks: {
+            title: items => { const r=stepRows[items[0].dataIndex].r; return `${r.from} → ${r.to}`; },
+            label: item => {
+              const r = stepRows[item.dataIndex].r;
+              return item.dataset.label==='Average'
+                ? `Average: ${r.avg} days (${r.n} project${r.n===1?'':'s'})`
+                : `Range: ${r.min}–${r.max} days`;
+            },
+          }},
+        },
+        onClick: (evt, els) => { if(els.length) openModal(timingData[stepRows[els[0].index].i]); },
+        onHover: (evt, els) => { evt.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      },
+    });
+  }
+
+  // ── 2. Phase length over time (line, by month the phase ended) ──
+  _destroyChart('trend');
+  const byMonth = ph => {
+    const m = {};
+    (ph?.entries||[]).forEach(e=>{ if(!e.end) return; const k=e.end.substring(0,7); (m[k]=m[k]||[]).push(e.days); });
+    return m;
+  };
+  const budget = phaseData.find(p=>p.label==='Budget Phase');
+  const design = phaseData.find(p=>p.label==='Design Phase');
+  const bM = byMonth(budget), dM = byMonth(design);
+  const months = [...new Set([...Object.keys(bM), ...Object.keys(dM)])].sort();
+  if(!months.length){ _chartEmpty('chartTrend','Not enough completed phases yet.'); }
+  else {
+    const avgOf = arr => arr ? Math.round(arr.reduce((s,v)=>s+v,0)/arr.length) : null;
+    const monthLabel = k => new Date(k+'-15T12:00:00').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+    const series = (M, color, label) => ({
+      label, data: months.map(k=>avgOf(M[k])), counts: months.map(k=>(M[k]||[]).length),
+      borderColor:color, backgroundColor:color, tension:.3, spanGaps:true, pointRadius:4, pointHoverRadius:6,
+    });
+    _charts.trend = new Chart(document.getElementById('chartTrend'), {
+      type: 'line',
+      data: { labels: months.map(monthLabel), datasets: [
+        series(bM, '#2D5A41', 'Budget Phase'),
+        series(dM, '#B8962E', 'Design Phase'),
+      ]},
+      options: {
+        maintainAspectRatio:false,
+        scales: {
+          y: { beginAtZero:true, title:{display:true,text:'Avg days'}, grid:{color:'#EFEAE2'} },
+          x: { grid:{display:false} },
+        },
+        plugins: {
+          legend: { position:'bottom', labels:{boxWidth:10, usePointStyle:true} },
+          tooltip: { callbacks: { label: item => {
+            const n = item.dataset.counts[item.dataIndex];
+            return `${item.dataset.label}: ${item.formattedValue} days (${n} project${n===1?'':'s'})`;
+          }}},
+        },
+      },
+    });
+  }
+
+  // ── 3. Pipeline reach (how many projects have a date on each step) ──
+  _destroyChart('funnel');
+  const stepNames = Object.keys(stepOrder).sort((a,b)=>{
+    const pa=STEP_DISPLAY_ORDER.indexOf(a), pb=STEP_DISPLAY_ORDER.indexOf(b);
+    if(pa===-1&&pb===-1) return (stepOrder[a]||0)-(stepOrder[b]||0);
+    if(pa===-1) return 1; if(pb===-1) return -1; return pa-pb;
+  });
+  const counts = stepNames.map(s => allProjects.filter(p=>p.dates && p.dates[s]).length);
+  if(!counts.some(n=>n>0)){ _chartEmpty('chartFunnel','No step dates yet.'); }
+  else {
+    _charts.funnel = new Chart(document.getElementById('chartFunnel'), {
+      type: 'bar',
+      data: { labels: stepNames, datasets: [{
+        label:'Projects', data: counts, backgroundColor:'#4A7A5E', borderRadius:3,
+      }]},
+      options: {
+        maintainAspectRatio:false,
+        scales: {
+          y: { beginAtZero:true, ticks:{precision:0}, grid:{color:'#EFEAE2'} },
+          x: { grid:{display:false}, ticks:{ autoSkip:false, maxRotation:60, minRotation:45,
+               callback: function(v){ const l=this.getLabelForValue(v); return l.length>16 ? l.slice(0,15)+'…' : l; } } },
+        },
+        plugins: {
+          legend: { display:false },
+          tooltip: { callbacks: { label: item => `${item.formattedValue} project${item.raw===1?'':'s'}` } },
+        },
+      },
+    });
+  }
 }
 
 // ── MODAL ──────────────────────────────────────────────────────
